@@ -3424,8 +3424,10 @@ DisplayGameOptns:        ; Misc Key Window
 %endif
 
   GUIDisplayTextY 9,119,93,GUIGameOptnsTextD2
-  GUIDisplayText 9,122,102,GUIGameOptnsTextD2d
-  GUIDisplayText 9,122,112,GUIGameOptnsTextD2e
+  GUIDisplayText 9,122,102,GUIGameOptnsTextD2b
+  GUIDisplayText 9,122,112,GUIGameOptnsTextD2c
+  GUIDisplayText 9,122,122,GUIGameOptnsTextD2d
+  GUIDisplayText 9,122,132,GUIGameOptnsTextD2e
 
   ; Draw black boxes
   DDrawBox 9,26,22,[KeyBGDisble0]
@@ -3460,8 +3462,10 @@ DisplayGameOptns:        ; Misc Key Window
   DDrawBox 9,77,129,[KeyDisplayBatt]
 %endif
 
-  DDrawBox 9,190,99,[KeyIncreaseGamma]
-  DDrawBox 9,190,109,[KeyDecreaseGamma]
+  DDrawBox 9,190,99,[KeyWinDisble]
+  DDrawBox 9,190,109,[KeyTranspDisble]
+  DDrawBox 9,190,119,[KeyIncreaseGamma]
+  DDrawBox 9,190,129,[KeyDecreaseGamma]
   ret
 
 SECTION .bss
@@ -3496,6 +3500,8 @@ GUIGameOptnsTextD1c db 'DISPLAY FPS',0
 GUIGameOptnsTextD1d db 'BATT POWER',0
 
 GUIGameOptnsTextD2 db 'GFX TOGGLES:',0
+GUIGameOptnsTextD2b db 'WINDOWING',0
+GUIGameOptnsTextD2c db 'TRANSPARENCY',0
 GUIGameOptnsTextD2d db '+ GAMMA',0
 GUIGameOptnsTextD2e db '- GAMMA',0
 

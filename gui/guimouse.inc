@@ -3031,8 +3031,10 @@ DisplayGameOptnsClick:
   DGOptnsProcBox 78,130,[KeyDisplayBatt]
 %endif
 
-  DGOptnsProcBox 191,100,[KeyIncreaseGamma]
-  DGOptnsProcBox 191,110,[KeyDecreaseGamma]
+  DGOptnsProcBox 191,100,[KeyWinDisble]
+  DGOptnsProcBox 191,110,[KeyTranspDisble]
+  DGOptnsProcBox 191,120,[KeyIncreaseGamma]
+  DGOptnsProcBox 191,130,[KeyDecreaseGamma]
   ret
 
 DisplayGUIOptnsClick:

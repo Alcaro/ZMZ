@@ -314,6 +314,8 @@ extern unsigned int KeyQuickSaveSPC;
 extern unsigned int KeyUsePlayer1234;
 extern unsigned int KeyDisplayFPS;
 extern unsigned int KeyDisplayBatt;
+extern unsigned int KeyWinDisble;
+extern unsigned int KeyTranspDisble;
 extern unsigned int KeyIncreaseGamma;
 extern unsigned int KeyDecreaseGamma;
 extern unsigned int KeyInsrtChap;

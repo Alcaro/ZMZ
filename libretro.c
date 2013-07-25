@@ -277,6 +277,28 @@ extern unsigned int MessageOn;
 static enum retro_pixel_format fmt=RETRO_PIXEL_FORMAT_0RGB1555;
 static int fmt_shift;
 
+int disable_layer_support=0;
+int disable_transp_support=0;
+int disable_window_support=0;
+int disable_sndchan_support=0;
+
+int disabling_flags_changed=0;
+
+extern char Voice0Disable[8];//it is pretty much an array...
+extern char Voice1Disable;
+extern char Voice2Disable;
+extern char Voice3Disable;
+extern char Voice4Disable;
+extern char Voice5Disable;
+extern char Voice6Disable;
+extern char Voice7Disable;
+
+extern char scrndis;
+extern char transpdis;
+extern char disableeffects;
+
+
+
 // Callbacks
 //
 // Environment callback. Gives implementations a way of performing uncommon tasks. Extensible.
@@ -293,8 +315,62 @@ static bool retro_environment(unsigned cmd, void *data)
 			return true;
 		}
 	}
+	if (cmd==RETRO_ENVIRONMENT_SET_VARIABLES)
+	{
+		struct retro_variable * variables = (struct retro_variable*)data;
+		while (variables->key)
+		{
+			if (!strncmp(variables->key, "layer_", strlen("layer_"))) disable_layer_support++;
+			if (!strncmp(variables->key, "sndchan_", strlen("sndchan_"))) disable_sndchan_support++;
+			if (!strcmp(variables->key, "gfx_clip")) disable_window_support=1;
+			if (!strcmp(variables->key, "gfx_transp")) disable_transp_support=1;
+			variables++;
+		}
+		disable_layer_support=(disable_layer_support==5);
+		disable_sndchan_support=(disable_sndchan_support==8);
+	}
+	if (cmd==RETRO_ENVIRONMENT_GET_VARIABLE)
+	{
+		struct retro_variable * variable = (struct retro_variable*)data;
+		const char * answers[2]={"Yes", "No"};
+		if (!strncmp(variable->key, "layer_", strlen("layer_")))
+		{
+			int layer=variable->key[6]-'1';
+			variable->value=answers[(scrndis&(1<<layer))?1:0];
+			return true;
+		}
+		if (!strncmp(variable->key, "sndchan_", strlen("sndchan_")))
+		{
+			int channel=variable->key[8]-'1';
+			variable->value=answers[!Voice0Disable[channel]];
+			return true;
+		}
+		if (!strcmp(variable->key, "gfx_clip"))
+		{
+			variable->value=answers[disableeffects];
+printf("enaclip=%s\n",variable->value);
+			return true;
+		}
+		if (!strcmp(variable->key, "gfx_transp"))
+		{
+			variable->value=answers[transpdis];
+printf("enatrsp=%s\n",variable->value);
+			return true;
+		}
+		return false;
+	}
+	if (cmd==RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE)
+	{
+		*(bool*)data=disabling_flags_changed;
+		disabling_flags_changed=false;
+		return true;
+	}
 	return false;
 }
+
+
+
+
 
 // Render a frame. Pixel format is 15-bit 0RGB1555 native endian unless changed (see RETRO_ENVIRONMENT_SET_PIXEL_FORMAT).
 // Width and height specify dimensions of buffer.
@@ -639,17 +715,6 @@ static void retro_video_refresh_too_weird_size(const char * data, unsigned width
 }
 
 
-int zmz_toggle_layer(int layer, int newstate)
-{
-	//layer: 0-4 (4 is sprite)
-	//newstate: 0-1 (enable flag)
-	//return: 0-1 (support flag)
-	
-printf("lay%i=%i\n",layer,newstate);
-	return 0;
-}
-
-
 
 
 
@@ -707,16 +772,6 @@ static void retro_audio_sample(int16_t left, int16_t right)
 	//}
 	int16_t a[2]={left,right};
 	retro_audio_sample_batch(a,1);
-}
-
-int zmz_toggle_sound_channel(int channel, int newstate)
-{
-	//channel: 0-7
-	//newstate: 0-1 (enable flag)
-	//return: 0-1 (support flag)
-	
-printf("ch%i=%i\n",channel,newstate);
-	return 0;
 }
 
 
@@ -821,6 +876,12 @@ void zmz_set_controllers()
 
 bool zmz_load_core(const char * core)
 {
+	disable_layer_support=0;
+	disable_transp_support=0;
+	disable_window_support=0;
+	disable_sndchan_support=0;
+	disabling_flags_changed=0;
+	
 	if (core)
 	{
 		enum replaceresult repl=retro_replace_core(&retro, core);

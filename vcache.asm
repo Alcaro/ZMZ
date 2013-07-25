@@ -34,7 +34,7 @@ EXTSYM GUIRClick,MousePRClick,ngmsdraw,cvidmode,fulladdtab
 EXTSYM KeyDisableSC0,KeyDisableSC1,KeyDisableSC2,KeyDisableSC3,KeyDisableSC4
 EXTSYM KeyDisableSC5,KeyDisableSC6,KeyDisableSC7,KeyFastFrwrd,SRAMSave5Sec
 EXTSYM KeyBGDisble0,KeyBGDisble1,KeyBGDisble2,KeyBGDisble3,KeySprDisble
-EXTSYM KeyResetAll
+EXTSYM KeyResetAll,KeyWinDisble,KeyTranspDisble
 EXTSYM KeyStateSlc0,KeyStateSlc1,KeyStateSlc2,KeyStateSlc3,KeyStateSlc4
 EXTSYM KeyStateSlc5,KeyStateSlc6,KeyStateSlc7,KeyStateSlc8,KeyStateSlc9
 EXTSYM KeyIncStateSlot,KeyDecStateSlot,KeyUsePlayer1234,maxskip,DSPMem
@@ -59,6 +59,12 @@ EXTSYM debuggeron
 %else
 EXTSYM SPCSave
 %endif
+
+EXTSYM disabling_flags_changed
+EXTSYM disable_sndchan_support
+EXTSYM disable_layer_support
+EXTSYM disable_transp_support
+EXTSYM disable_window_support
 
 ; Process stuff & Cache sprites
 
@@ -100,7 +106,6 @@ SECTION .text
 %%nostsl
 %endmacro
 
-EXTSYM zmz_toggle_sound_channel
 %macro soundselcomp 4
     mov eax,[%1]
     test byte[pressed+eax],1
@@ -109,10 +114,7 @@ EXTSYM zmz_toggle_sound_channel
     xor byte[%2],01h
     xor eax, eax
     mov al, byte[%2]
-    push eax
-    push %3
-    call zmz_toggle_sound_channel
-    add esp,8
+    mov byte[disabling_flags_changed], 1
     
     mov byte[sndchena+9],%4
     mov byte[sndchdis+9],%4
@@ -121,7 +123,7 @@ EXTSYM zmz_toggle_sound_channel
     jnz %%sen
     mov dword[Msgptr],sndchdis
 %%sen
-    test eax, eax
+    cmp byte[disable_sndchan_support],0
     jnz %%supported
     mov byte[%2],01h
     mov dword[Msgptr],togglenosprt
@@ -402,25 +404,20 @@ NEWSYM cachevideo
 .noclick
     ; disable all necessary backgrounds
 EXTSYM zmz_toggle_layer
-%macro layerselcomp 5
+%macro layerselcomp 4
     mov eax,[%1]
     test byte[pressed+eax],1
     je %%nodis
     mov byte[pressed+eax],2
     mov al,byte[scrndis]
     xor byte[scrndis],%2
-    shr eax,%3
-    and al,1
-    push eax
-    push %3
-    call zmz_toggle_layer
-    add esp,8
-    mov dword[Msgptr],%4
+    mov byte[disabling_flags_changed],1
+    mov dword[Msgptr],%3
     test byte[scrndis],%2
     jz %%en
-    mov dword[Msgptr],%5
+    mov dword[Msgptr],%4
 %%en
-    test eax, eax
+    cmp byte[disable_layer_support],0
     jnz %%supported
     mov byte[scrndis],00h
     mov dword[Msgptr],togglenosprt
@@ -429,11 +426,11 @@ EXTSYM zmz_toggle_layer
     mov [MessageOn],eax
 %%nodis
 %endmacro
-    layerselcomp KeyBGDisble0,01h,0,bg1layena,bg1laydis
-    layerselcomp KeyBGDisble1,02h,1,bg2layena,bg2laydis
-    layerselcomp KeyBGDisble2,04h,2,bg3layena,bg3laydis
-    layerselcomp KeyBGDisble3,08h,3,bg4layena,bg4laydis
-    layerselcomp KeySprDisble,10h,4,sprlayena,sprlaydis
+    layerselcomp KeyBGDisble0,01h,bg1layena,bg1laydis
+    layerselcomp KeyBGDisble1,02h,bg2layena,bg2laydis
+    layerselcomp KeyBGDisble2,04h,bg3layena,bg3laydis
+    layerselcomp KeyBGDisble3,08h,bg4layena,bg4laydis
+    layerselcomp KeySprDisble,10h,sprlayena,sprlaydis
     mov eax,[KeyEmuSpeedDown]
     test byte[pressed+eax],1
     jz .nospeeddown
@@ -470,12 +467,13 @@ EXTSYM zmz_toggle_layer
     mov byte[Voice7Disable],1
     mov byte[scrndis],0
     mov byte[disableeffects],0
-    mov byte[osm2dis],0
+    mov byte[transpdis],0
     mov byte[EmuSpeed],29
     mov al,[snesinputdefault1]
     mov [device1],al
     mov al,[snesinputdefault2]
     mov [device2],al
+    mov byte[disabling_flags_changed],1
     mov dword[Msgptr],panickeyp
     mov eax,[MsgCount]
     mov [MessageOn],eax
@@ -547,7 +545,44 @@ EXTSYM zmz_toggle_layer
     mov [MessageOn],eax
     call Get_MousePositionDisplacement
 .nodisd2
-
+    mov eax,[KeyWinDisble]
+    test byte[pressed+eax],1
+    je .nodis9
+    mov byte[pressed+eax],2
+    xor byte[disableeffects],1
+    mov byte[disabling_flags_changed],1
+    mov dword[Msgptr],windissw
+    cmp byte[disableeffects],1
+    je .disablew
+    mov dword[Msgptr],winenasw
+.disablew
+    cmp byte[disable_window_support],0
+    jnz .windsupported
+    mov byte[windissw],0
+    mov dword[Msgptr],togglenosprt
+.windsupported
+    mov eax,[MsgCount]
+    mov [MessageOn],eax
+.nodis9
+    mov eax,[KeyTranspDisble]
+    test byte[pressed+eax],1
+    je .nodis10
+    mov byte[pressed+eax],2
+    xor byte[transpdis],1
+    mov byte[disabling_flags_changed],1
+    mov dword[Msgptr],trspdissw
+    cmp byte[transpdis],1
+    je .disableom
+    mov dword[Msgptr],trspenasw
+.disableom
+    cmp byte[disable_transp_support],0
+    jnz .trspsupported
+    mov byte[transpdis],0
+    mov dword[Msgptr],togglenosprt
+.trspsupported
+    mov eax,[MsgCount]
+    mov [MessageOn],eax
+.nodis10
     mov eax,[KeyVolUp]
     test byte[pressed+eax],1
     je .novolup
@@ -826,7 +861,7 @@ NEWSYM yesblank
     ret
 
 SECTION .data
-NEWSYM osm2dis,      db 0
+NEWSYM transpdis,      db 0
 NEWSYM colormodedef, db 1,1,1,1, 2,2,1,0, 2,2,0,0, 3,2,0,0,
                db 3,1,0,0, 2,1,0,0, 2,0,0,0, 0,0,0,0
 NEWSYM colormodeofs, dd 0
@@ -862,8 +897,8 @@ NEWSYM snesle1,      db '1 JUSTIFIER ENABLED',0
 NEWSYM snesle2,      db '2 JUSTIFIERS ENABLED',0
 NEWSYM windissw,    db 'WINDOWING DISABLED',0
 NEWSYM winenasw,    db 'WINDOWING ENABLED',0
-NEWSYM ofsdissw,    db 'OFFSET MODE DISABLED',0
-NEWSYM ofsenasw,    db 'OFFSET MODE ENABLED',0
+NEWSYM trspdissw,    db 'TRANSPARENCY DISABLED',0
+NEWSYM trspenasw,    db 'TRANSPARENCY ENABLED',0
 NEWSYM ngena, db 'NEW GFX ENGINE ENABLED',0
 NEWSYM ngdis, db 'NEW GFX ENGINE DISABLED',0
 NEWSYM sselm, db 'STATE SLOT  0 SELECTED',0

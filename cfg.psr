@@ -981,6 +981,11 @@ KeyDisplayFPS dd 0
 KeyDisplayBatt dd 0
 
 @
+@ Video Engine: Old/New Graphic Engine | Windowing | Offset Effects Toggles
+KeyWinDisble dd 10
+KeyTranspDisble dd 11
+
+@
 @ Gamma Correction Up/Down
 KeyIncreaseGamma dd 0
 KeyDecreaseGamma dd 0
