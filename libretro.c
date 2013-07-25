@@ -348,13 +348,11 @@ static bool retro_environment(unsigned cmd, void *data)
 		if (!strcmp(variable->key, "gfx_clip"))
 		{
 			variable->value=answers[disableeffects];
-printf("enaclip=%s\n",variable->value);
 			return true;
 		}
 		if (!strcmp(variable->key, "gfx_transp"))
 		{
 			variable->value=answers[transpdis];
-printf("enatrsp=%s\n",variable->value);
 			return true;
 		}
 		return false;
