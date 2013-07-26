@@ -411,7 +411,7 @@ GUIgetcurrentinput:
   je near GUISpeedKeys
   cmp ebx,8
   je near GUIGetInputLine
-  cmp ebx,21
+  cmp ebx,22
   je near GUILibretroKeys
   ret
 .runprog
