@@ -923,7 +923,7 @@ void zmz_init()
 {
 	const char * libretros[]={
 		LibretroPath,
-		"snes9x_libretro_x86_20130725.dll",
+		"snes9x_libretro_x86_20130726.dll",
 		"snes9x_libretro_x86_20130519.dll",
 		"snes9x_next_libretro_x86_20130519.dll",
 		"bsnes_libretro_accuracy_x86_20130519.dll",

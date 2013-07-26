@@ -136,13 +136,14 @@ EmulateSavestates db 1
 @
 @ Where to look for a Libretro core.
 @ If it's not found or can't be loaded, the following are tried in this order:
+@ snes9x_libretro_x86_20130726.dll
 @ snes9x_libretro_x86_20130519.dll
 @ snes9x_next_libretro_x86_20130519.dll
 @ bsnes_libretro_accuracy_x86_20130519.dll
 @ bsnes_libretro_balanced_x86_20130519.dll
 @ bsnes_libretro_performance_x86_20130519.dll
 @ retro.dll
-LibretroPath times 256 db "snes9x_libretro_x86_20130519.dll"
+LibretroPath times 256 db "snes9x_libretro_x86_20130726.dll"
 
 @
 @  ----
