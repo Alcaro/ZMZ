@@ -1006,6 +1006,25 @@ void zmz_load(unsigned char * ROM, unsigned int NumofBytes)
 	}
 }
 
+void zmz_update_cheats()
+{
+	if (!romloaded) return;
+	
+	extern int NumCheats;
+	extern unsigned char cheatdata[255+2][28]; // toggle, value, address, pvalue, name(22)
+	
+	retro_cheat_reset();
+	
+	int i;
+	int j;
+	for (i=0;i<NumCheats;i++)
+	{
+		char code[9];
+		sprintf(code, "%.2X%.2X%.2X%.2X", cheatdata[i][4], cheatdata[i][3], cheatdata[i][2], cheatdata[i][1]);
+		retro_cheat_set(i, !(cheatdata[i][0]&4), code);
+	}
+}
+
 void zmz_reset()
 {
 	if (!romloaded) return;

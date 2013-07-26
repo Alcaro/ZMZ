@@ -20,6 +20,8 @@
 
 SECTION .text
 
+EXTSYM zmz_update_cheats
+
 ; GUI Cheat Code Routines
 
 AddCSCheatCode:
@@ -409,33 +411,9 @@ DisableCheatCode:
     xor ecx,ecx
     xor ebx,ebx
     or byte[esi],4
-    test byte[esi],1
-    jnz .gfrom
-    mov al,[esi+5]
-    mov cx,[esi+2]
-    mov bl,[esi+4]
-    mov byte[writeon],1
-    test byte[esi],80h
-    jnz .nowrite
-    test byte[esi-28],80h
-    jnz .nowrite
-    call dword near [memtablew8+ebx*4]
-.nowrite
-    mov byte[writeon],0
-    ret
-.gfrom
-    mov al,[esi+5]
-    mov ecx,[esi+2]
-    and ecx,0FFFFFFh
-    mov esi,[romdata]
-    mov [esi+ecx],al
-    ret
-.gfram
-    mov al,[esi+5]
-    mov ecx,[esi+2]
-    and ecx,0FFFFFFh
-    mov esi,[sram]
-    mov [esi+ecx],al
+    pushad
+    call zmz_update_cheats
+    popad
     ret
 
 EnableCheatCode:
@@ -443,47 +421,9 @@ EnableCheatCode:
     xor ecx,ecx
     xor ebx,ebx
     and byte[esi],0FBh
-    test byte[esi],1
-    jnz .gfrom
-    mov al,[esi+1]
-    mov cx,[esi+2]
-    mov bl,[esi+4]
-    push ecx
-    push eax
-    push ebx
-    push edx
-    call dword near [memtabler8+ebx*4]
-    pop edx
-    mov [esi+5],al
-    pop ebx
-    pop eax
-    pop ecx
-    mov byte[writeon],1
-    test byte[esi],80h
-    jnz .nowrite
-    test byte[esi-28],80h
-    jnz .nowrite
-    call dword near [memtablew8+ebx*4]
-.nowrite
-    mov byte[writeon],0
-    ret
-.gfrom
-    mov al,[esi+1]
-    mov ecx,[esi+2]
-    and ecx,0FFFFFFh
-    mov esi,[romdata]
-    mov bl,[esi+ecx]
-    mov [esi+ecx],al
-    mov [esi+5],bl
-    ret
-.gfram
-    mov al,[esi+1]
-    mov ecx,[esi+2]
-    and ecx,0FFFFFFh
-    mov esi,[sram]
-    mov bl,[esi+ecx]
-    mov [esi+ecx],al
-    mov [esi+5],bl
+    pushad
+    call zmz_update_cheats
+    popad
     ret
 
 EnableCheatCodeNoPrevMod:
@@ -491,37 +431,9 @@ EnableCheatCodeNoPrevMod:
     xor ecx,ecx
     xor ebx,ebx
     and byte[esi],0FBh
-    test byte[esi],1
-    jnz .gfrom
-    mov al,[esi+1]
-    mov cx,[esi+2]
-    mov bl,[esi+4]
-    mov byte[writeon],1
-    test byte[esi],80h
-    jnz .nowrite
-    test byte[esi-28],80h
-    jnz .nowrite
-    call dword near [memtablew8+ebx*4]
-.nowrite
-    mov byte[writeon],0
-    ret
-.gfrom
-    mov al,[esi+1]
-    mov ecx,[esi+2]
-    and ecx,0FFFFFFh
-    mov esi,[romdata]
-    mov bl,[esi+ecx]
-    mov [esi+ecx],al
-    mov [esi+5],bl
-    ret
-.gfram
-    mov al,[esi+1]
-    mov ecx,[esi+2]
-    and ecx,0FFFFFFh
-    mov esi,[sram]
-    mov bl,[esi+ecx]
-    mov [esi+ecx],al
-    mov [esi+5],bl
+    pushad
+    call zmz_update_cheats
+    popad
     ret
 
 AddCheatCode:
@@ -1028,27 +940,7 @@ decodegg:
     mov al,[guicheatvalrep]
     or [cheatdata+edx],al
     pop eax
-    push ecx
-    push eax
-    push ebx
-    push edx
-    call dword near [memtabler8+ebx*4]
-    pop edx
-    mov [cheatdata+edx+5],al
-    pop ebx
-    pop eax
-    pop ecx
 
-    mov byte[writeon],1
-
-    test byte[cheatdata+edx],80h
-    jnz .nowrite
-    test byte[cheatdata+edx-28],80h
-    jnz .nowrite
-    call dword near [memtablew8+ebx*4]
-.nowrite
-
-    mov byte[writeon],0
     mov byte[CheatOn],1
     inc byte[NumCheats]
     mov dword[GUICheatTextZ1],0
@@ -1065,6 +957,9 @@ decodegg:
     jz .noview
     mov dword[GUIcurrentcheatviewloc],0
 .noview
+    pushad
+    call zmz_update_cheats
+    popad
     ret
 SECTION .data
 .GG2Norm db 04h,06h,0Dh,0Eh,02h,07h,08h,03h,0Bh,05h,0Ch,09h,0Ah,00h,0Fh,01h
@@ -1124,25 +1019,8 @@ decodepar:
     mov al,[guicheatvalrep]
     or [cheatdata+edx],al
     pop eax
-    push ecx
-    push eax
-    push ebx
-    push edx
-    call dword near [memtabler8+ebx*4]
-    pop edx
     mov [cheatdata+edx+5],al
-    pop ebx
-    pop eax
-    pop ecx
 
-    mov byte[writeon],1
-    test byte[cheatdata+edx],80h
-    jnz .nowrite
-    test byte[cheatdata+edx-28],80h
-    jnz .nowrite
-    call dword near [memtablew8+ebx*4]
-.nowrite
-    mov byte[writeon],0
     mov byte[CheatOn],1
     inc dword[NumCheats]
     mov dword[GUICheatTextZ1],0
@@ -1159,6 +1037,10 @@ decodepar:
     jz .noview
     mov dword[GUIcurrentcheatviewloc],0
 .noview
+
+    pushad
+    call zmz_update_cheats
+    popad
     ret
 
 SECTION .bss
