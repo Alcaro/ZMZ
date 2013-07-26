@@ -2605,14 +2605,8 @@ DisplayGUICheatConv:
 %%skip
 %endmacro
 
-SECTION .data
-GUICheatTextNoSupport db 'NOT SUPPORTED IN ZMZ, SORRY',0   ; Top
-SECTION .text
 DisplayGUICheat:       ; Add/Browse Cheats menu
   GUIDrawWindowBox 7,GUICheatDisp
-  
-  GUIDisplayText 7,6,13,GUICheatTextNoSupport
-  ret
 
   GUIDisplayText 7,6,13,GUICheatTextA
   GUIDisplayText 7,6,132,GUICheatTextC1
@@ -2834,9 +2828,6 @@ DisplayGUISearch:
   mov dword[GUIwinsizex+13*4],170
   mov dword[GUIwinsizey+13*4],150
   call DrawWindowSearch
-
-  GUIDisplayText 13,6,16,GUICheatTextNoSupport
-  ret
 
   GUIDisplayTextY 13,6,16,GUICSrcTextA1
   ; Radio Buttons

@@ -1586,7 +1586,7 @@ void CheckROMType()
     CalcChecksum();
   }
 
-  wramdata = wramdataa;
+  //wramdata = wramdataa;
 }
 
 extern unsigned short copv, brkv, abortv, nmiv, nmiv2, irqv, irqv2, resetv;

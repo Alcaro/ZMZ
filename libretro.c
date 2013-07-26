@@ -985,18 +985,25 @@ void zmz_load(unsigned char * ROM, unsigned int NumofBytes)
 		}
 	}
 	romloaded=true;
+	
+	zmz_set_controllers();
+	
 	struct retro_system_av_info avinfo;
 	memset(&avinfo, 0, sizeof(avinfo));
 	retro_get_system_av_info(&avinfo);
 	SampleRate=avinfo.timing.sample_rate;
-	
-	//sampleread=0;
-	//samplewrite=0;
-	
-	zmz_set_controllers();
-	
 	void reInitSound();
 	reInitSound();
+	
+	extern unsigned char * wramdata;
+	extern unsigned char wramdataa[65536*2];//this one is actually 65536 bytes, and after that comes another variable for bank 7F... just... why...
+	if (retro_get_memory_size(RETRO_MEMORY_SYSTEM_RAM)==2*65536) wramdata=retro_get_memory_data(RETRO_MEMORY_SYSTEM_RAM);
+	else
+	{
+		wramdata=wramdataa;
+		memset(wramdata, 0, 65536*2);
+		strcpy((char*)wramdata, "NOT SUPPORTED");
+	}
 }
 
 void zmz_reset()
