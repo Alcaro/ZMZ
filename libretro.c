@@ -284,7 +284,7 @@ int disable_sndchan_support=0;
 
 int disabling_flags_changed=0;
 
-extern char Voice0Disable[8];//it is pretty much an array...
+extern char Voice0Disable[8];//these eight pretty much constitute an array... and this is doable ONLY because they're declared in assembly.
 extern char Voice1Disable;
 extern char Voice2Disable;
 extern char Voice3Disable;
@@ -317,6 +317,10 @@ static bool retro_environment(unsigned cmd, void *data)
 	}
 	if (cmd==RETRO_ENVIRONMENT_SET_VARIABLES)
 	{
+		disable_layer_support=0;
+		disable_sndchan_support=0;
+		disable_window_support=0;
+		disable_transp_support=0;
 		struct retro_variable * variables = (struct retro_variable*)data;
 		while (variables->key)
 		{
@@ -337,25 +341,21 @@ static bool retro_environment(unsigned cmd, void *data)
 		{
 			int layer=variable->key[6]-'1';
 			variable->value=answers[(scrndis&(1<<layer))?1:0];
-			return true;
 		}
 		if (!strncmp(variable->key, "sndchan_", strlen("sndchan_")))
 		{
 			int channel=variable->key[8]-'1';
 			variable->value=answers[!Voice0Disable[channel]];
-			return true;
 		}
 		if (!strcmp(variable->key, "gfx_clip"))
 		{
 			variable->value=answers[disableeffects];
-			return true;
 		}
 		if (!strcmp(variable->key, "gfx_transp"))
 		{
 			variable->value=answers[transpdis];
-			return true;
 		}
-		return false;
+		return true;
 	}
 	if (cmd==RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE)
 	{
