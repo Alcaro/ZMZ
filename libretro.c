@@ -244,6 +244,7 @@ enum replaceresult retro_replace_core(struct libretro * retro, const char * core
 {
 	struct libretro tmpretro;
 	HMODULE h=LoadLibrary(core);
+	if (!h) return repl_fail;
 	if (h==retro->h)
 	{
 		FreeLibrary(h);//can't load the same one twice
