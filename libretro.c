@@ -324,10 +324,10 @@ static bool retro_environment(unsigned cmd, void *data)
 		struct retro_variable * variables = (struct retro_variable*)data;
 		while (variables->key)
 		{
-			if (!strncmp(variables->key, "layer_", strlen("layer_"))) disable_layer_support++;
-			if (!strncmp(variables->key, "sndchan_", strlen("sndchan_"))) disable_sndchan_support++;
-			if (!strcmp(variables->key, "gfx_clip")) disable_window_support=1;
-			if (!strcmp(variables->key, "gfx_transp")) disable_transp_support=1;
+			if (!strncmp(variables->key, "s9x_layer_", strlen("s9x_layer_"))) disable_layer_support++;
+			if (!strncmp(variables->key, "s9x_sndchan_", strlen("s9x_sndchan_"))) disable_sndchan_support++;
+			if (!strcmp(variables->key, "s9x_gfx_clip")) disable_window_support=1;
+			if (!strcmp(variables->key, "s9x_gfx_transp")) disable_transp_support=1;
 			variables++;
 		}
 		disable_layer_support=(disable_layer_support==5);
@@ -337,21 +337,21 @@ static bool retro_environment(unsigned cmd, void *data)
 	{
 		struct retro_variable * variable = (struct retro_variable*)data;
 		const char * answers[2]={"Yes", "No"};
-		if (!strncmp(variable->key, "layer_", strlen("layer_")))
+		if (!strncmp(variable->key, "s9x_layer_", strlen("s9x_layer_")))
 		{
-			int layer=variable->key[6]-'1';
+			int layer=variable->key[strlen("s9x_layer_")]-'1';
 			variable->value=answers[(scrndis&(1<<layer))?1:0];
 		}
-		if (!strncmp(variable->key, "sndchan_", strlen("sndchan_")))
+		if (!strncmp(variable->key, "s9x_sndchan_", strlen("s9x_sndchan_")))
 		{
-			int channel=variable->key[8]-'1';
+			int channel=variable->key[strlen("s9x_sndchan_")]-'1';
 			variable->value=answers[!Voice0Disable[channel]];
 		}
-		if (!strcmp(variable->key, "gfx_clip"))
+		if (!strcmp(variable->key, "s9x_gfx_clip"))
 		{
 			variable->value=answers[disableeffects];
 		}
-		if (!strcmp(variable->key, "gfx_transp"))
+		if (!strcmp(variable->key, "s9x_gfx_transp"))
 		{
 			variable->value=answers[transpdis];
 		}
