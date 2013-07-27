@@ -19,7 +19,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
 
-char *ZVERSION = "ZMZ1.08";
+char *ZVERSION = "ZMZ1.09";
 
 
 #ifdef __UNIXSDL__
