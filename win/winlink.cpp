@@ -2345,10 +2345,6 @@ static void UpdateSoundInternal(const short * data, size_t frames)
 	DWORD dwBytes1;
 	DWORD dwBytes2;
 	
-	//DSBLOCK_FROMWRITECURSOR is apparently worthless. sure, I can use ugly tricks
-	writecursor+=frames*4;
-	writecursor%=SoundBufferSize;
-	
 	if(!UsePrimaryBuffer)
 	{
 		if (DS_OK!=lpSoundBuffer->Lock(writecursor, frames*4, &lpvPtr1, &dwBytes1, &lpvPtr2, &dwBytes2, 0))
@@ -2363,6 +2359,10 @@ static void UpdateSoundInternal(const short * data, size_t frames)
 			return;
 		}
 	}
+	
+	//DSBLOCK_FROMWRITECURSOR is apparently worthless. sure, I can use ugly tricks
+	writecursor+=frames*4;
+	writecursor%=SoundBufferSize;
 	
 	short* samples1=(short*)lpvPtr1;
 	short* samples2=(short*)lpvPtr2;
@@ -2410,14 +2410,14 @@ void UpdateSound(const short * data, size_t frames)
 //printf("%i %0.5i %0.5i %0.5i\r",SampleRateActual,SoundBufferSize/8,difference,SoundBufferSize/8*7);
 	if (difference<SoundBufferSize/8*3)
 	{
-		//puts("SKIP WRITE");
+		//puts("DOUBLEWRITE");
 		//writecursor+=SoundBufferSize/8;
 		UpdateSoundInternal(data, frames);
 	}
 	if (difference>SoundBufferSize/8*7)
 	{
 		//puts("OVERWRITE");
-		writecursor-=SoundBufferSize/8;
+		writecursor=(writecursor+SoundBufferSize-SoundBufferSize/8)%SoundBufferSize;
 	}
 	
 	UpdateSoundInternal(data, frames);
