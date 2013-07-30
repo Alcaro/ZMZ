@@ -2364,6 +2364,12 @@ static bool raw_video_open()
   return(false);
 }
 
+void processvideo_sound(const short * samples, unsigned int count)
+{
+	extern bool RawDumpInProgress;
+	if (RawDumpInProgress && raw_vid.ap) fwrite(samples, 4,count, raw_vid.ap);
+}
+
 static void raw_audio_write(unsigned int samples)
 {
   void ProcessSoundBuffer();

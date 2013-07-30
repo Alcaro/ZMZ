@@ -2396,6 +2396,8 @@ static void UpdateSoundInternal(const short * data, size_t frames)
 
 void UpdateSound(const short * data, size_t frames)
 {
+	void processvideo_sound(const short * samples, unsigned int count);
+	processvideo_sound(data, frames);
 	if (SoundEnabled == 0) return;
 	
 	DWORD writecursortrue;
