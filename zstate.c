@@ -117,9 +117,9 @@ static bool s9x_to_zst(const unsigned char * s9x, unsigned int s9xlen, unsigned 
 	
 	if (block_VRA_len==65536 && block_PPU_len==2649)
 	{
-FILE * f=fopen("ppu.bin", "wb");
-fwrite(block_PPU, 1,block_PPU_len, f);
-fclose(f);
+//FILE * f=fopen("ppu.bin", "wb");
+//fwrite(block_PPU, 1,block_PPU_len, f);
+//fclose(f);
 		memcpy(zst+0x20C13, block_VRA, 65536);
 		
 		const unsigned char * ppu=block_PPU;

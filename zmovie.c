@@ -2020,8 +2020,8 @@ Code for dumping raw video
 //Used by raw videos for calculating sample rate
 
 
-static const unsigned int freqtab[] = { 8000, 11025, 22050, 44100, 16000, 32000, 48000 };
-#define RATE freqtab[SoundQuality]
+extern DWORD SampleRate;
+#define RATE SampleRate
 
 
 //0 = None; 1 Logging, but not now, 2 Log now
