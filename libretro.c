@@ -801,6 +801,7 @@ extern unsigned char device2;
 static void retro_input_poll(void)
 {
 	extern unsigned char NoInputRead;
+printf("INPUTBLOCK=%i\n",NoInputRead);
 	if (NoInputRead!=1) ReadInputDevice();
 }
 // Queries for input for player 'port'. device will be masked with RETRO_DEVICE_MASK.
