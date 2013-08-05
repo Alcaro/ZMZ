@@ -2327,6 +2327,7 @@ static bool raw_video_open()
     }
     if (raw_vid.ap)
     {
+printf("SRATE=%i\n",RATE);
       fputs("RIFF", raw_vid.ap);                 //header
       fwrite4(~0, raw_vid.ap);                   //file size - unknown till file close
       fputs("WAVEfmt ", raw_vid.ap);             //format
@@ -2370,31 +2371,32 @@ void processvideo_sound(const short * samples, unsigned int count)
 	if (RawDumpInProgress && raw_vid.ap) fwrite(samples, 4,count, raw_vid.ap);
 }
 
-static void raw_audio_write(unsigned int samples)
-{
-  void ProcessSoundBuffer();
-  extern int DSPBuffer[1280];
-  extern unsigned int BufferSizeB, BufferSizeW;
-  int *d = DSPBuffer, *d_end;
-
-  while (samples > 1280) //This is in a loop for future proofing if we ever add above 48KHz
-  {
-    raw_audio_write(1280);
-    samples -= 1280;
-  }
-
-  BufferSizeB = samples;
-  BufferSizeW = samples<<1;
-
-  asm_call(ProcessSoundBuffer);
-
-  for (d_end = DSPBuffer+samples; d < d_end; d++)
-  {
-    if ((unsigned int)(*d + 0x7FFF) < 0xFFFF) { fwrite2((short)*d, raw_vid.ap); continue; }
-    if (*d > 0x7FFF) { fwrite2(0x7FFF, raw_vid.ap); }
-    else { fwrite2(0x8001, raw_vid.ap); }
-  }
-}
+//static void raw_audio_write(unsigned int samples)
+//{
+//puts("DOES THIS EXIST");
+  //void ProcessSoundBuffer();
+  //extern int DSPBuffer[1280];
+  //extern unsigned int BufferSizeB, BufferSizeW;
+  //int *d = DSPBuffer, *d_end;
+//
+  //while (samples > 1280) //This is in a loop for future proofing if we ever add above 48KHz
+  //{
+    //raw_audio_write(1280);
+    //samples -= 1280;
+  //}
+//
+  //BufferSizeB = samples;
+  //BufferSizeW = samples<<1;
+//
+  //asm_call(ProcessSoundBuffer);
+//
+  //for (d_end = DSPBuffer+samples; d < d_end; d++)
+  //{
+    //if ((unsigned int)(*d + 0x7FFF) < 0xFFFF) { fwrite2((short)*d, raw_vid.ap); continue; }
+    //if (*d > 0x7FFF) { fwrite2(0x7FFF, raw_vid.ap); }
+    //else { fwrite2(0x8001, raw_vid.ap); }
+  //}
+//}
 
 #define PIXEL (vidbuffer[((y+1)*288) + x + 16])
 static void raw_video_write_frame()
@@ -2414,6 +2416,7 @@ static void raw_video_write_frame()
     }
   }
 
+/*
   if (raw_vid.ap)
   {
     //Thanks Bisqwit for this algorithm
@@ -2426,6 +2429,7 @@ static void raw_video_write_frame()
     raw_audio_write(samples);
     AudioLogging = 1;
   }
+*/
 }
 
 
@@ -2990,7 +2994,6 @@ void MoviePlay()
 
 void MovieRecord()
 {
-puts("A");
   if (MovieProcessing == MOVIE_PLAYBACK)
   {
     zmv_replay_to_record();
