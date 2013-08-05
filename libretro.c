@@ -811,23 +811,6 @@ static int16_t retro_input_state(unsigned port, unsigned device, unsigned index,
 {
 	if (device==RETRO_DEVICE_JOYPAD)
 	{
-//if (framecount==350 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-//if (framecount==352 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-//if (framecount==354 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-//if (framecount==356 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-//if (framecount==358 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-//if (framecount==510 && id==RETRO_DEVICE_ID_JOYPAD_RIGHT) return 1;
-//if (framecount==573 && id==RETRO_DEVICE_ID_JOYPAD_UP) return 1;
-//if (framecount==637 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-//if (framecount>824 && id==RETRO_DEVICE_ID_JOYPAD_Y) return 1;
-//if (framecount>824 && framecount<860 && id==RETRO_DEVICE_ID_JOYPAD_RIGHT) return 1;
-
-//if (framecount==900 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-//if (framecount>900 && id==RETRO_DEVICE_ID_JOYPAD_A) return 1;
-//if (framecount==927 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-//if (framecount==954 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-//if (framecount==982 && id==RETRO_DEVICE_ID_JOYPAD_B) return 1;
-
 		unsigned int keystbl[]={JoyAOrig, JoyBOrig, JoyCOrig, JoyDOrig, JoyEOrig};
 		unsigned int keys=keystbl[(port==0)?0:(index+1)];
 		const unsigned int whichBit[]={
