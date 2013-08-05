@@ -1358,7 +1358,6 @@ static void replay_pad(unsigned char pad, unsigned char flag, unsigned char *buf
       *skip_bits = pad_bit_decoder(pad, buffer, *skip_bits);
     }
   }
-printf("IN%i=%.8X\n",pad,*last_state);
   *current_state = *last_state;
   latchx = zmv_vars.last_joy_state.latchx;
   latchy = zmv_vars.last_joy_state.latchy;

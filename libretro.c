@@ -23,6 +23,7 @@ maister, libretro dev:
 #include "libretro.h"
 #include <windows.h>
 #include "cfg.h"
+#include <stdio.h>
 
 
 struct libretro {
@@ -263,8 +264,6 @@ bool assign_no_core(struct libretro * retro);
 
 
 
-
-#include <stdio.h>
 
 extern void showvideo();
 extern void cachevideo();
@@ -800,9 +799,7 @@ extern unsigned char device2;
 // Polls input.
 static void retro_input_poll(void)
 {
-	extern unsigned char NoInputRead;
-printf("INPUTBLOCK=%i\n",NoInputRead);
-	if (NoInputRead!=1) ReadInputDevice();
+	//honoring this screws up movie replay
 }
 // Queries for input for player 'port'. device will be masked with RETRO_DEVICE_MASK.
 // Specialization of devices such as RETRO_DEVICE_JOYPAD_MULTITAP that have been set with retro_set_controller_port_device()
@@ -1005,6 +1002,7 @@ void zmz_update_cheats()
 	for (i=0;i<NumCheats;i++)
 	{
 		char code[9];
+		//bsnes demands the colon according to byuu forums. FUCK YOU
 		sprintf(code, "%.2X%.2X%.2X%.2X", cheatdata[i][4], cheatdata[i][3], cheatdata[i][2], cheatdata[i][1]);
 		retro_cheat_set(i, !(cheatdata[i][0]&4), code);
 	}
@@ -1091,6 +1089,9 @@ void zmz_main()
 			extern void RestorePauseFrame();
 			RestorePauseFrame();
 		}
+		
+		extern unsigned char NoInputRead;
+		if (NoInputRead!=1) ReadInputDevice();
 		
 		extern unsigned char EMUPause;
 		extern unsigned char RawDumpInProgress;
