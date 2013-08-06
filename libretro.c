@@ -635,9 +635,6 @@ static void retro_video_finalize()
 			line+=288;
 		}
 	}
-	
-	showvideo();
-	cachevideo();
 }
 
 static void retro_video_refresh_weird_size(const char * data, unsigned width, unsigned height, size_t pitch)
@@ -993,7 +990,7 @@ void zmz_update_cheats()
 	if (!romloaded) return;
 	
 	extern int NumCheats;
-	extern unsigned char cheatdata[255+2][28]; // toggle, value, address, pvalue, name(22)
+	extern unsigned char cheatdata[255+2][28]; // toggle, value, address(3), pvalue, name(22)
 	
 	retro_cheat_reset();
 	
@@ -1002,7 +999,7 @@ void zmz_update_cheats()
 	for (i=0;i<NumCheats;i++)
 	{
 		char code[9];
-		//bsnes demands the colon according to byuu forums. go away.
+		//bsnes demands the colon according to byuu forums. I don't care, go away.
 		sprintf(code, "%.2X%.2X%.2X%.2X", cheatdata[i][4], cheatdata[i][3], cheatdata[i][2], cheatdata[i][1]);
 		retro_cheat_set(i, !(cheatdata[i][0]&4), code);
 	}
@@ -1151,6 +1148,9 @@ void zmz_main()
 		extern unsigned int LethEnData;
 		
 		if (device2==3 || device2==4) JoyBNow=LethEnData;
+		
+		showvideo();
+		cachevideo();
 	}
 	
 	//memset(samples, 0, sizeof(samples));
