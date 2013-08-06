@@ -145,7 +145,7 @@ ifeq (${DEBUG},yes)
     CFLAGSORIG=-fno-omit-frame-pointer -ggdb3 -DDEBUG
     COPT=-O0
     ASMFLAGSORIG=-DDEBUG -g
-    EXE=zsnesd.exe
+    EXE=zmz.exe
     STRIP=
   endif
 endif
