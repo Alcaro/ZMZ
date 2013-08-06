@@ -308,7 +308,7 @@ static bool retro_environment(unsigned cmd, void *data)
 	{
 		enum retro_pixel_format newfmt = *(enum retro_pixel_format *)data;
 		if (newfmt==RETRO_PIXEL_FORMAT_0RGB1555 || newfmt==RETRO_PIXEL_FORMAT_RGB565 ||
-				newfmt==RETRO_PIXEL_FORMAT_XRGB8888/*fuck bsnes for violating the libretro spec and not accepting 0RGB1555*/)
+				newfmt==RETRO_PIXEL_FORMAT_XRGB8888/*bsnes, quit violating the libretro spec and give me 0RGB1555.*/)
 		{
 			fmt=newfmt;
 			fmt_shift=(fmt==RETRO_PIXEL_FORMAT_0RGB1555?1:0);
@@ -1002,7 +1002,7 @@ void zmz_update_cheats()
 	for (i=0;i<NumCheats;i++)
 	{
 		char code[9];
-		//bsnes demands the colon according to byuu forums. FUCK YOU
+		//bsnes demands the colon according to byuu forums. go away.
 		sprintf(code, "%.2X%.2X%.2X%.2X", cheatdata[i][4], cheatdata[i][3], cheatdata[i][2], cheatdata[i][1]);
 		retro_cheat_set(i, !(cheatdata[i][0]&4), code);
 	}
