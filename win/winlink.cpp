@@ -38,6 +38,7 @@ extern "C" {
 #include "resource.h"
 #include "../cfg.h"
 #include "../input.h"
+unsigned char lhguimouse;
 
 
 /*
@@ -1923,6 +1924,10 @@ bool CheckTVRatioReq()
 
 void initwinvideo(void)
 {
+   //just stick this whereever
+   if (GetSystemMetrics(SM_SWAPBUTTON)) lhguimouse=!swapmouse;
+   else lhguimouse=swapmouse;
+   
    WINDOWPLACEMENT wndpl;
    RECT rc1;
    DWORD newmode=0;

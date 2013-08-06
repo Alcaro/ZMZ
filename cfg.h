@@ -216,7 +216,7 @@ extern unsigned char prevloaddnamel[5120];
 extern unsigned char prevloadfnamel[5120];
 extern unsigned char prevlfreeze;
 extern unsigned char GUIRClick;
-extern unsigned char lhguimouse;
+extern unsigned char swapmouse;
 extern unsigned char mouseshad;
 #ifndef __MSDOS__
 #endif

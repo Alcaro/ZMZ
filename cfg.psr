@@ -691,9 +691,9 @@ prevlfreeze db 0
 GUIRClick db 0
 
 @
-@ Left Handed Mouse Behavior for GUI (0 = NO SWAP, 1 = Swap)
+@ What to do with the system configuration for left-handed mice (0 = OBEY, 1 = Do the opposite)
 @ (swap left and right buttons)
-lhguimouse db 0
+swapmouse db 0
 
 @
 @ Show Mouse Cursor Shadow (0 = No, 1 = YES)

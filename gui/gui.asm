@@ -156,7 +156,7 @@ EXTSYM vsyncon
 EXTSYM BilinearFilter,GUIBIFIL,drawscreenwin,blinit
 %endif
 
-EXTSYM NativeFilePicker,EmulateSavestates
+EXTSYM NativeFilePicker,EmulateSavestates,swapmouse
 
 %include "gui/guitools.inc"
 %include "gui/guimisc.inc"

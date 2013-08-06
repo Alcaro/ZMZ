@@ -3043,7 +3043,7 @@ DisplayGUIOptnsClick:
   mov edx,[GUImouseposy]
   sub edx,[GUIwinposy+10*4]
   GUIClickCButton 12,23,byte[GUIRClick]      ; Checkboxes
-  GUIClickCButton 12,33,byte[lhguimouse]
+  GUIClickCButton 12,33,byte[swapmouse]
   GUIClickCButton 12,43,byte[mouseshad]
   GUIClickCButton 12,53,byte[mousewrap]
 

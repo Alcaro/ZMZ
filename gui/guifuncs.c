@@ -515,7 +515,7 @@ void GUIRestoreVars()
 #endif
   CheckValueBounds(&prevlfreeze, 0, 1, 0, UB);
   CheckValueBounds(&GUIRClick, 0, 1, 0, UB);
-  CheckValueBounds(&lhguimouse, 0, 1, 0, UB);
+  CheckValueBounds(&swapmouse, 0, 1, 0, UB);
   CheckValueBounds(&mouseshad, 0, 1, 1, UB);
   CheckValueBounds(&mousewrap, 0, 1, 0, UB);
 #ifdef __WIN32__
