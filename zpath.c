@@ -50,7 +50,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 #ifdef __MSDOS__
 char ZCfgFile[] = "zsnes.cfg";
 #elif defined(__WIN32__)
-char ZCfgFile[] = "zsnesw.cfg";
+char ZCfgFile[] = "zmz.cfg";
 #else
 char ZCfgFile[] = "zsnesl.cfg";
 #endif

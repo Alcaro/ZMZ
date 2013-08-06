@@ -131,7 +131,7 @@ ifeq (${OS},__MSDOS__)
 endif
 
 ifeq (${OS},__WIN32__)
-  EXE=zsnesw.exe
+  EXE=zmz.exe
   FILEFORMAT=win32
   LIBS=${LIBSORIG} -ldxguid -ldinput8 -lwsock32 -luser32 -lgdi32 -lshell32 -lwinmm -lcomdlg32
   ifneq (${DEBUG},yes)
@@ -290,7 +290,7 @@ zsnes: ${PSR} ${OBJFIX} ${OBJS}
 ifneq (${ENV},msvc)
 	${LINK} ${STRIP} -o ${EXE} ${OBJS} ${LIBS}
 else
-	 @echo /Fezsnesw.exe *.obj ${CPUDIR}\*.obj ${VIDEODIR}\*.obj ${CHIPDIR}\*.obj ${EFFECTSDIR}\*.obj ${DOSDIR}\*.obj ${WINDIR}\*.obj ${GUIDIR}\*.obj > link.vc
+	 @echo /Fezmz.exe *.obj ${CPUDIR}\*.obj ${VIDEODIR}\*.obj ${CHIPDIR}\*.obj ${EFFECTSDIR}\*.obj ${DOSDIR}\*.obj ${WINDIR}\*.obj ${GUIDIR}\*.obj > link.vc
 	 @echo ${ZIPDIR}\*.obj ${JMADIR}\*.obj ${NETDIR}\*.obj ${MMLIBDIR}\*.obj >> link.vc
 	 @echo ${MSVCLIBS} >> link.vc
 	 cl /nologo @link.vc ${WINDIR}/zsnes.res /link
