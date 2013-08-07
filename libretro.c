@@ -853,12 +853,6 @@ void zmz_set_controllers()
 
 bool zmz_load_core(const char * core)
 {
-	disable_layer_support=0;
-	disable_transp_support=0;
-	disable_window_support=0;
-	disable_sndchan_support=0;
-	disabling_flags_changed=0;
-	
 	if (core)
 	{
 		enum replaceresult repl=retro_replace_core(&retro, core);
@@ -870,6 +864,12 @@ bool zmz_load_core(const char * core)
 		retro_unload(&retro);//untested, we're not really supposed to replace a real core with the null core
 		assign_no_core(&retro);
 	}
+	
+	disable_layer_support=0;
+	disable_transp_support=0;
+	disable_window_support=0;
+	disable_sndchan_support=0;
+	disabling_flags_changed=0;
 	
 	fmt=RETRO_PIXEL_FORMAT_0RGB1555;
 	fmt_shift=1;
