@@ -3183,6 +3183,7 @@ int GetMouseButton(void)
          if (Y > (int)(GetSystemMetrics(SM_CYSCREEN) - WindowHeight)) Y = (GetSystemMetrics(SM_CYSCREEN) - WindowHeight);
          InputRead();
          initwinvideo();
+         Sleep(5);//don't peg the cpu
       }
    }
    if (Moving == 1)
