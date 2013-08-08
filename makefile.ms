@@ -133,7 +133,7 @@ endif
 ifeq (${OS},__WIN32__)
   EXE=zmz.exe
   FILEFORMAT=win32
-  LIBS=${LIBSORIG} -ldxguid -ldinput8 -lwsock32 -luser32 -lgdi32 -lshell32 -lwinmm -lcomdlg32
+  LIBS=${LIBSORIG} -ldxguid -ldinput8 -lwsock32 -luser32 -lgdi32 -lshell32 -lwinmm -lcomdlg32 -lws2_32
   ifneq (${DEBUG},yes)
     LIBS += -mwindows
   endif
@@ -211,7 +211,7 @@ ifneq (${DEBUGGER},no)
   endif
 endif
 
-NETOBJ=
+NETOBJ=${NETDIR}/netplay.o
 #${NETDIR}/ztcp${OE}
 
 VIDEOBJ=${VIDEODIR}/makev16b${OE} ${VIDEODIR}/makev16t${OE} ${VIDEODIR}/makevid${OE}\
@@ -425,6 +425,8 @@ ${JMADIR}/zsnesjma${OE}: ${JMADIR}/zsnesjma.cpp ${JMADIR}/jma.h \
 
 ${MMLIBDIR}/mm${OE}: ${MMLIBDIR}/mm.c ${MMLIBDIR}/mm.h
 ${MMLIBDIR}/windows${OE}: ${MMLIBDIR}/windows.c ${MMLIBDIR}/mm.h
+
+${NETDIR}/netplay${OE}: ${NETDIR}/netplay.c ${NETDIR}/netplay.h ${NETDIR}/netplay_compat.h
 
 ${VIDEODIR}/2xsaiw${OE}: ${VIDEODIR}/2xsaiw.asm macros.mac
 ${VIDEODIR}/hq2x16${OE}: ${VIDEODIR}/hq2x16.asm macros.mac
