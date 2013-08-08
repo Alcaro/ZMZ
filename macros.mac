@@ -27,7 +27,7 @@ bits 32
 section .text
 ; Zsnes required macros
 
-%define ZVERSION 'ZMZ1.09'
+%define ZVERSION 'ZMZ1.10'
 
 
 %ifdef MACHO
