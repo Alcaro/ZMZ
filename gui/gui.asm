@@ -3455,6 +3455,7 @@ GUIMousePtr:
   db 0 ,0 ,0 ,0 ,0 ,55,50,47
   db 0 ,0 ,0 ,0 ,0 ,0 ,52,0
 
+SECTION .text
 EXTSYM zmz_open_netplay_raw
 StartNetplayAsServer:
 push 1
@@ -3467,6 +3468,7 @@ call zmz_open_netplay_raw
 pop eax
 ret
 
+SECTION .data
 NEWSYM GUIFontData
 ; bitmap 5x5 font; char - offset for ASCII2Font
   db 0,0,0,0,0; empty space 0x0
