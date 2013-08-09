@@ -1221,18 +1221,34 @@ void zmz_close_netplay()
 
 extern char GUINetChatNick[16];
 extern char GUINetHostIp[29];
-extern char GUINetMyIp[16];
 extern char GUINetPort[8];
 void zmz_open_netplay_raw(bool server)
 {
-	zmz_open_netplay(GUINetChatNick, server?NULL:GUINetHostIp, atoi(GUINetPort));
-	extern unsigned char GUIQuit;
-	GUIQuit=2;
+puts("WINGCAP");
+	//extern unsigned char GUIQuit;
+	//GUIQuit=2;
+	extern unsigned int GUICBHold;
+  GUICBHold = 0;
 	extern unsigned char GUIwinactiv[];
 	extern unsigned char GUIwinorder[];
 	extern unsigned char GUIwinptr;
 	GUIwinactiv[8] = 0; // close net dialog
 	GUIwinorder[--GUIwinptr] = 0;
+	zmz_open_netplay(GUINetChatNick, server?NULL:GUINetHostIp, atoi(GUINetPort));
+}
+
+extern char GUINetMyIp[29];
+void zmz_get_my_ip()
+{
+	WSADATA wsaData;
+	WSAStartup(MAKEWORD(2, 2), &wsaData);
+	
+  HOSTENT* phe;
+	char blah[256];
+	gethostname(blah, 255);
+	phe = gethostbyname(blah);
+	if (phe) strcpy(GUINetMyIp, inet_ntoa(*(struct in_addr*)phe->h_addr));
+	else strcpy(GUINetMyIp, "UNKNOWN");
 }
 
 

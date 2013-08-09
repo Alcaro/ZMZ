@@ -3356,8 +3356,6 @@ SECTION .text
 DisplayNetOptns:
   GUIDrawWindowBox 8,GUINetDisp
   
-  ;GUIDisplayText 8,122,102,GUINetOptnsTextA
-  
   GUIOuttextwin2 8,5,15,GUINetOptnsTextA
   GUIOuttextwin2 8,5,25,GUINetOptnsTextB
   DrawGUIButton 8,5,35,129,46,GUINetOptnsTextC,25,0,0
@@ -3368,7 +3366,7 @@ DisplayNetOptns:
   DrawGUIWinBox 8,55,24,119,32,167
   DrawGUIWinBox 8,26,58,191,66,167
   GUIOuttextwin2 8,17,97,GUINetOptnsTextG
-  ;GUIOuttextwin2 8,5,87,hostname
+  ;GUIOuttextwin2 8,5,87,GUINetMyIp
   
   GUIOuttextwin2 8,59,15,GUINetPort
   GUIOuttextwin2 8,30,60,GUINetHostIp
@@ -3471,10 +3469,10 @@ GUINetOptnsTextC db 'START AS SERVER',0
 GUINetOptnsTextD db 'CLIENT OPTIONS:',0
 GUINetOptnsTextE db 'IP:',0
 GUINetOptnsTextF db 'CONNECT TO SERVER',0
-GUINetOptnsTextG db 'YOUR IP:',0
 NEWSYM GUINetChatNick, times 16 db 0
 NEWSYM GUINetHostIp, times 29 db 0
-NEWSYM GUINetMyIp, db '12345',0 ; times 16 db 0
+GUINetOptnsTextG db 'YOUR IP: '
+NEWSYM GUINetMyIp, times 29 db 0
 NEWSYM GUINetPort, db '55435',0,0,0
 GUINetActiveTextbox db 0,0,0
 GUINetUnderscore db '_',0

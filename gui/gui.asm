@@ -1853,6 +1853,8 @@ GUITryMenuItem:                     ; Defines which menu item calls what window 
 .nocheat
   cmp byte[GUIcmenupos],5
   jne near .nonet
+  EXTSYM zmz_get_my_ip
+  call zmz_get_my_ip
   GUICheckMenuItem 8, 0
 .nonet
   cmp byte[GUIcmenupos],6
