@@ -1224,7 +1224,6 @@ extern char GUINetHostIp[29];
 extern char GUINetPort[8];
 void zmz_open_netplay_raw(bool server)
 {
-puts("WINGCAP");
 	//extern unsigned char GUIQuit;
 	//GUIQuit=2;
 	extern unsigned int GUICBHold;
