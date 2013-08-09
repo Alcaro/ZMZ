@@ -385,6 +385,8 @@ GUIgetcurrentinput:
   je near GUISoundKeys
   cmp ebx,7
   je near GUICheatKeys
+  cmp ebx,8
+  je near GUITCPIPKeys
   cmp ebx,10
   je near GUIGUIOptnsKeys
   cmp ebx,11
@@ -409,8 +411,6 @@ GUIgetcurrentinput:
   je near GUISaveKeys
   cmp ebx,21
   je near GUISpeedKeys
-  cmp ebx,8
-  je near GUIGetInputLine
   cmp ebx,22
   je near GUILibretroKeys
   ret
@@ -821,9 +821,6 @@ GUIInputKeys:
   call SetDevice
 .nop209
 %endif
-  ret
-
-GUITCPIPKeys:
   ret
 
 GUIOptionKeys:
@@ -1503,13 +1500,174 @@ GUISoundKeys:
 
 SECTION .data
 .sampratenext db 1,4,5,6,2,3,0,0
+;TESTTESTTEST db ":%i:",0
+;EXTSYM printf
 SECTION .text
 
-GUINetMenuKeys1:
-  ret
+GUITCPIPKeys:
+;push eax
+;xor eax,eax
+;mov al,byte[GUINetActiveTextbox]
+;push eax
+;push TESTTESTTEST
+;call printf
+;pop eax
+;pop eax
+;pop eax
+    cmp byte[GUINetActiveTextbox],1
+    je near .section2
+    mov edi,GUINetHostIp
+    mov esi,26
+    cmp byte[GUINetActiveTextbox],2
+    jne .notsecondstring
+    mov edi,GUINetChatNick
+    mov esi,9
+.notsecondstring
+    mov ebx,edi
+.next
+    cmp byte[ebx],0
+    je .done2
+    inc ebx
+    jmp .next
+.done2
+    sub ebx,edi
+    mov [GUINetActiveTextbox+1],bl
+    xor eax,eax
+    mov al,[GUINetActiveTextbox+1]
+    shl al,2
+    add al,2
+    cmp dh,32
+    jbe .notnum2
+    cmp byte[GUINetActiveTextbox],0
+    je .notsecondstringb
+    cmp dh,'_'
+    je .notsecondstringb
+    cmp dh,'-'
+    je .notsecondstringb
+    cmp dh,'^'
+    je .notsecondstringb
+    cmp dh,'='
+    je .notsecondstringb
+    cmp dh,'+'
+    je .notsecondstringb
+    cmp dh,'['
+    je .notsecondstringb
+    cmp dh,']'
+    je .notsecondstringb
+    cmp dh,'0'
+    jb .notnum2
+    cmp dh,'9'
+    jbe .notsecondstringb
+    cmp dh,'A'
+    jb .notnum2
+    cmp dh,'Z'
+    jbe .notsecondstringb
+    cmp dh,'a'
+    jb .notnum2
+    cmp dh,'z'
+    jbe .notsecondstringb
+.notsecondstringb
+    cmp ebx,esi
+    jae near .donesection1
+    add ebx,edi
+    mov byte[ebx],dh
+    jmp .donesection1
+.notnum2
+    cmp dh,8
+    jne .notbacksp
+    or ebx,ebx
+    jz near .donesection1
+    add ebx,edi
+    mov byte[ebx-1],0
+    jmp .donesection1
+.notbacksp
+    cmp dh,'c'
+    je .yesc
+    cmp dh,'C'
+    jne .noc
+.yesc
+;    mov byte[CNetType],15
+;    mov byte[ModemProcess],41
+;    mov byte[WhichRemote],4
+.noc
+    cmp dh,'s'
+    je .yess
+    cmp dh,'S'
+    jne .nos
+.yess
+;    mov byte[CNetType],15
+;    mov byte[ModemProcess],40
+;    mov byte[WhichRemote],4
+.nos
+.donesection1
+    ret
 
-GUIGetInputLine:
-  ret
+.section2
+    mov ebx,GUINetPort
+.loopz
+    cmp byte[ebx],0
+    je .donez
+    inc ebx
+    jmp .loopz
+.donez
+    cmp byte[GUINetPort],'0'
+    jne .notzerob
+    cmp byte[GUINetPort+1],0
+    jne .notzerob
+    dec ebx
+.notzerob
+    cmp dh,'0'
+    jb .notnum
+    cmp dh,'9'
+    ja .notnum
+    mov byte[ebx],dh
+    mov byte[ebx+1],0
+    push ebx
+    call .convert
+    pop ebx
+    cmp ecx,65536
+    jb .donenumb
+    mov byte[ebx],0
+.donenumb
+    jmp .donenum
+.notnum
+    cmp dh,8
+    jne .donenum
+    cmp byte[GUINetPort],0
+    je .donenum
+    mov byte[ebx-1],0
+.donenum
+    call .convert
+    cmp ecx,0
+    jne .notzero
+    mov byte[GUINetPort],'0'
+    mov byte[GUINetPort+1],0
+.notzero
+    mov [TCPIPPortNum],ecx
+    ret
+.convert
+    mov ebx,GUINetPort
+    xor ecx,ecx
+.loop
+    cmp byte[ebx],0
+    je .done
+    mov eax,ecx
+    push ebx
+    mov ebx,10
+    mul ebx
+    pop ebx
+    mov ecx,eax
+    xor eax,eax
+    mov al,[ebx]
+    sub eax,48
+    add ecx,eax
+    inc ebx
+    jmp .loop
+.done
+    ret
+
+SECTION .data
+NEWSYM TCPIPPortNum, dd 7845
 
 SECTION .bss
 GUIEditString resd 1              ; Pointer to string

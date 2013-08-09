@@ -288,10 +288,10 @@ GUIMiscMenuData:
 
 ; Window sizes and positions
 ;                LOAD STAT INPT OPT  VID  SND  CHT  NET  GMKEY GUIOP ABT  RSET SRC  STCN MOVE CMBO ADDO CHIP PATH SAVE SPED RTRO
-GUIwinposxo dd 0,6   ,65  ,33  ,42  ,5   ,34  ,6   ,64  ,8    ,5    ,33  ,56  ,64  ,56  ,5   ,3   ,28  ,48  ,6    ,28  ,53  ,33
+GUIwinposxo dd 0,6   ,65  ,33  ,42  ,5   ,34  ,6   ,28  ,8    ,5    ,33  ,56  ,64  ,56  ,5   ,3   ,28  ,48  ,6    ,28  ,53  ,33
 GUIwinposyo dd 0,20  ,70  ,20  ,20  ,20  ,20  ,20  ,30  ,30   ,20   ,20  ,60  ,30  ,60  ,20  ,20  ,60  ,60  ,20   ,30  ,20  ,20
-GUIwinsizex dd 0,244 ,126 ,205 ,180 ,245 ,188 ,244 ,128 ,240  ,245  ,190 ,144 ,128 ,144 ,246 ,250 ,200 ,160 ,244  ,200 ,150 ,190
-GUIwinsizey dd 0,190 ,68  ,192 ,190 ,190 ,188 ,191 ,40  ,170  ,150  ,190 ,42  ,40  ,42  ,190 ,190 ,120 ,100 ,190  ,168 ,180 ,190
+GUIwinsizex dd 0,244 ,126 ,205 ,180 ,245 ,188 ,244 ,198 ,240  ,245  ,190 ,144 ,128 ,144 ,246 ,250 ,200 ,160 ,244  ,200 ,150 ,190
+GUIwinsizey dd 0,190 ,68  ,192 ,190 ,190 ,188 ,191 ,100 ,170  ,150  ,190 ,42  ,40  ,42  ,190 ,190 ,120 ,100 ,190  ,168 ,180 ,190
 NEWSYM GUIwinptr, db 0
 
 NEWSYM WaterOn,  db 1
@@ -616,7 +616,6 @@ LoadDetermine:
   mov byte[GUICheatMenuData+14],1
   mov byte[GUICheatMenuData+14*2],1
   mov byte[GUIMiscMenuData+14*2],1
-  mov byte[GUINetPlayMenuData],2             ; Gray out Netplay options
 %ifdef __MSDOS__
   mov byte[GUINetPlayMenuData+14],2
 %endif
@@ -1854,13 +1853,7 @@ GUITryMenuItem:                     ; Defines which menu item calls what window 
 .nocheat
   cmp byte[GUIcmenupos],5
   jne near .nonet
-%ifdef __MSDOS__
-;    GUICheckMenuItem 8, 0        ; Disable DOS Netplay Options
-;    GUICheckMenuItem 8, 1
-%endif
-;    GUICheckMenuItem 8, 0        ; Disable WIN/SDL Internet Option
-  cmp byte[GUIcrowpos],0
-  jne near .nonet
+  GUICheckMenuItem 8, 0
 .nonet
   cmp byte[GUIcmenupos],6
   jne near .nomisc
@@ -3459,6 +3452,18 @@ GUIMousePtr:
   db 0 ,0 ,0 ,0 ,55,50,45,0
   db 0 ,0 ,0 ,0 ,0 ,55,50,47
   db 0 ,0 ,0 ,0 ,0 ,0 ,52,0
+
+EXTSYM zmz_open_netplay_raw
+StartNetplayAsServer:
+push 1
+call zmz_open_netplay_raw
+pop eax
+ret
+StartNetplayAsClient:
+push 0
+call zmz_open_netplay_raw
+pop eax
+ret
 
 NEWSYM GUIFontData
 ; bitmap 5x5 font; char - offset for ASCII2Font

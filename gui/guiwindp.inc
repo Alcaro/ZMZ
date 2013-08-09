@@ -3354,7 +3354,130 @@ TViewLoc resd 1
 SECTION .text
 
 DisplayNetOptns:
+  GUIDrawWindowBox 8,GUINetDisp
+  
+  ;GUIDisplayText 8,122,102,GUINetOptnsTextA
+  
+  GUIOuttextwin2 8,5,15,GUINetOptnsTextA
+  GUIOuttextwin2 8,5,25,GUINetOptnsTextB
+  DrawGUIButton 8,5,35,129,46,GUINetOptnsTextC,25,0,0
+  GUIOuttextwin2 8,5,50,GUINetOptnsTextD
+  GUIOuttextwin2 8,5,60,GUINetOptnsTextE
+  DrawGUIButton 8,5,70,129,81,GUINetOptnsTextF,26,0,0
+  DrawGUIWinBox 8,55,13,95,21,167
+  DrawGUIWinBox 8,55,24,119,32,167
+  DrawGUIWinBox 8,26,58,191,66,167
+  GUIOuttextwin2 8,17,97,GUINetOptnsTextG
+  ;GUIOuttextwin2 8,5,87,hostname
+  
+  GUIOuttextwin2 8,59,15,GUINetPort
+  GUIOuttextwin2 8,30,60,GUINetHostIp
+  GUIOuttextwin2 8,59,26,GUINetChatNick
+  
+  mov byte[GUINetUnderscore],'_'
+  test byte[GUINetActiveTextbox+2],8
+  jz .yesus
+  mov byte[GUINetUnderscore],' '
+.yesus
+  xor eax,eax
+  mov al,[GUINetActiveTextbox+1]
+  mov ebx,6
+  mul ebx
+  cmp byte[GUINetActiveTextbox],1
+  je near .cursor2
+  cmp byte[GUINetActiveTextbox],2
+  je near .cursor3
+  add eax,30
+  GUIOuttextwin2 8,eax,61,GUINetUnderscore
+  jmp .cursor1
+.cursor2
+  xor eax,eax
+  mov ebx,GUINetPort
+.loopc
+  cmp byte[ebx],0
+  je .donec
+  inc ebx
+  add eax,6
+  jmp .loopc
+.donec
+  add eax,59
+  GUIOuttextwin2 8,eax,16,GUINetUnderscore
+  jmp .cursor1
+.cursor3
+  xor eax,eax
+  mov ebx,GUINetChatNick
+.loopc2
+  cmp byte[ebx],0
+  je .donec2
+  inc ebx
+  add eax,6
+  jmp .loopc2
+.donec2
+  add eax,59
+  GUIOuttextwin2 8,eax,27,GUINetUnderscore
+.cursor1
+
+  ; Draw borders 
+  mov dword[GUIWincol],148+10
+  cmp byte[cwindrawn],1
+  jne .noone3
+  mov dword[GUIWincol],148+5
+.noone3
+  cmp byte[cwindrawn],0
+  jne .nozero3
+  mov dword[GUIWincol],148
+.nozero3
+  mov dl,[GUIWincol]                 ; Port
+  DrawGUIWinBox 8,55,12,95,12,dl
+  mov dl,[GUIWincol]
+  add dl,1
+  DrawGUIWinBox 8,54,13,53,21,dl
+  mov dl,[GUIWincol]
+  add dl,4
+  DrawGUIWinBox 8,55,22,95,22,dl
+  mov dl,[GUIWincol]
+  add dl,3
+  DrawGUIWinBox 8,97,13,96,21,dl
+  mov dl,[GUIWincol]                 ; Nickname
+  DrawGUIWinBox 8,55,23,119,23,dl
+  mov dl,[GUIWincol]
+  add dl,1
+  DrawGUIWinBox 8,54,24,53,32,dl
+  mov dl,[GUIWincol]
+  add dl,4
+  DrawGUIWinBox 8,55,33,119,33,dl
+  mov dl,[GUIWincol]
+  add dl,3
+  DrawGUIWinBox 8,121,24,120,32,dl
+  mov dl,[GUIWincol]                 ; IP
+  DrawGUIWinBox 8,26,57,191,57,dl
+  mov dl,[GUIWincol]
+  add dl,1
+  DrawGUIWinBox 8,25,58,24,66,dl
+  mov dl,[GUIWincol]
+  add dl,4
+  DrawGUIWinBox 8,26,67,191,67,dl
+  mov dl,[GUIWincol]
+  add dl,3
+  DrawGUIWinBox 8,193,58,192,66,dl
+ ; End draw borders  
+  
   ret
+
+SECTION .data
+GUINetOptnsTextA db 'PORT',0
+GUINetOptnsTextB db 'NICKNAME',0
+GUINetOptnsTextC db 'START AS SERVER',0
+GUINetOptnsTextD db 'CLIENT OPTIONS:',0
+GUINetOptnsTextE db 'IP:',0
+GUINetOptnsTextF db 'CONNECT TO SERVER',0
+GUINetOptnsTextG db 'YOUR IP:',0
+NEWSYM GUINetChatNick, times 16 db 0
+NEWSYM GUINetHostIp, times 29 db 0
+NEWSYM GUINetMyIp, db '12345',0 ; times 16 db 0
+NEWSYM GUINetPort, db '55435',0,0,0
+GUINetActiveTextbox db 0,0,0
+GUINetUnderscore db '_',0
 
 SECTION .bss
 NEWSYM GUINCStA, resd 3
@@ -5234,7 +5357,7 @@ GUISoundDisp db 'SOUND CONFIG',0
 GUIVideoDisp db 'VIDEO CONFIG',0
 GUICheatDisp db 'CHEAT',0
 GUISearchDisp db 'CHEAT SEARCH',0
-GUINetDisp db 'REMOTE',0,0,0,0,0,0,0,0,0
+GUINetDisp db 'NETPLAY',0
 GUIGameDisp db 'MISC KEYS',0
 GUIGUIDisp db 'GUI OPTIONS',0
 GUIAboutDisp db 'ABOUT',0

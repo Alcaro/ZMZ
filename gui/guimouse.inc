@@ -850,6 +850,10 @@ ProcessMouseButtons:
   popad
 .nodocspage
 %endif
+  cmp byte[GUICBHold],25
+  je near StartNetplayAsServer
+  cmp byte[GUICBHold],26
+  je near StartNetplayAsClient
   mov byte[GUICBHold],0
   ret
 .checkmenuboxclick
@@ -1685,7 +1689,7 @@ SECTION .text
 
 %macro GUITextBoxInputB 5
   GUIClickArea %1,%2,%3,%4,%%noclick
-  mov byte[GUINetTextm2],%5
+  mov byte[GUINetActiveTextbox],%5
 %%noclick
 %endmacro
 
@@ -2837,6 +2841,11 @@ DisplayGUICheatClick:
   ret
 
 DisplayNetOptnsClick:
+  GUIPHoldbutton 5,35,129,46,25
+  GUIPHoldbutton 5,70,129,81,26
+  GUITextBoxInputB 55,13,95,21,1
+  GUITextBoxInputB 26,58,191,66,0
+  GUITextBoxInputB 55,24,119,32,2
   ret
 
 guipresstest:

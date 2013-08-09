@@ -26,7 +26,7 @@ maister, libretro dev:
 #include <stdio.h>
 #include "net/netplay.h"
 netplay_t * zmz_netplay_handle=NULL;
-bool zmz_open_netplay(const char * host, uint16_t port);
+bool zmz_open_netplay(const char * mynick, const char * host, uint16_t port);
 void zmz_close_netplay();
 
 
@@ -1059,9 +1059,6 @@ extern unsigned char pressed[256+128+64];
 void zmz_main()
 {
 	if (!romloaded) return;
-static bool neton=false;if(!neton){
-zmz_open_netplay("192.168.1.137",55435);
-neton=true;}
 	zmz_set_controllers();
 	while (true)
 	{
@@ -1182,16 +1179,21 @@ neton=true;}
 
 
 
-bool zmz_open_netplay(const char * host, uint16_t port)
+bool zmz_open_netplay(const char * mynick, const char * host, uint16_t port)
 {
 	if (zmz_netplay_handle) zmz_close_netplay();
+	
+	static bool net_inited=false;
+	if (!net_inited) net_inited=netplay_init_network();
+	if (!net_inited) return false;
+	
 	static struct retro_callbacks cb;
 	cb.frame_cb=retro_video_refresh;
 	cb.sample_batch_cb=retro_audio_sample_batch;
 	cb.sample_cb=retro_audio_sample;
 	cb.state_cb=retro_input_state;
 	
-	zmz_netplay_handle=netplay_new(host, port, 16, &cb, false, "ZMZ");
+	zmz_netplay_handle=netplay_new(host, port, 16, &cb, false, mynick);
 	if (!zmz_netplay_handle) return false;
 	
 	retro_set_video_refresh(video_frame_net);
@@ -1199,6 +1201,9 @@ bool zmz_open_netplay(const char * host, uint16_t port)
 	retro_set_audio_sample_batch(audio_sample_batch_net);
 	retro_set_input_poll(input_poll_net);
 	retro_set_input_state(input_state_net);
+	
+	void powercycle(bool sramload, bool romload);
+	powercycle(false, false);
 }
 
 void zmz_close_netplay()
@@ -1213,6 +1218,23 @@ void zmz_close_netplay()
 	retro_set_input_poll(retro_input_poll);
 	retro_set_input_state(retro_input_state);
 }
+
+extern char GUINetChatNick[16];
+extern char GUINetHostIp[29];
+extern char GUINetMyIp[16];
+extern char GUINetPort[8];
+void zmz_open_netplay_raw(bool server)
+{
+	zmz_open_netplay(GUINetChatNick, server?NULL:GUINetHostIp, atoi(GUINetPort));
+	extern unsigned char GUIQuit;
+	GUIQuit=2;
+	extern unsigned char GUIwinactiv[];
+	extern unsigned char GUIwinorder[];
+	extern unsigned char GUIwinptr;
+	GUIwinactiv[8] = 0; // close net dialog
+	GUIwinorder[--GUIwinptr] = 0;
+}
+
 
 
 
