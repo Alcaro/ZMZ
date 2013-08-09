@@ -1060,7 +1060,7 @@ void zmz_main()
 {
 	if (!romloaded) return;
 static bool neton=false;if(!neton){
-zmz_open_netplay("localhost",55435);
+zmz_open_netplay("192.168.1.137",55435);
 neton=true;}
 	zmz_set_controllers();
 	while (true)
@@ -1191,7 +1191,7 @@ bool zmz_open_netplay(const char * host, uint16_t port)
 	cb.sample_cb=retro_audio_sample;
 	cb.state_cb=retro_input_state;
 	
-	zmz_netplay_handle=netplay_new(host, port, 8, &cb, false, "ZMZ");
+	zmz_netplay_handle=netplay_new(host, port, 16, &cb, false, "ZMZ");
 	if (!zmz_netplay_handle) return false;
 	
 	retro_set_video_refresh(video_frame_net);

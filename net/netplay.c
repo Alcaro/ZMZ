@@ -1017,7 +1017,7 @@ static bool get_self_input_state(netplay_t *handle)
       unsigned i;
       for (i = 0; i < 16/*RARCH_FIRST_META_KEY*/; i++)
       {
-         int16_t tmp = cb(1, RETRO_DEVICE_JOYPAD, 0, i);
+         int16_t tmp = cb(0, RETRO_DEVICE_JOYPAD, 0, i);
          //int16_t tmp = cb(g_settings.input.netplay_client_swap_input ? 0 : !handle->port,
          //      RETRO_DEVICE_JOYPAD, 0, i);
          state |= tmp ? 1 << i : 0;
