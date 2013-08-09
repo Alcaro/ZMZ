@@ -906,7 +906,7 @@ void zmz_init()
 {
 	const char * libretros[]={
 		LibretroPath,
-		"snes9x_libretro_x86_20130726.dll",
+		"snes9x_libretro_x86_20130727.dll",
 		"snes9x_libretro_x86_20130519.dll",
 		"snes9x_next_libretro_x86_20130519.dll",
 		"bsnes_libretro_accuracy_x86_20130519.dll",
@@ -1030,6 +1030,7 @@ bool zmz_state_save(void * data, unsigned int size)
 bool zmz_state_load(const void * data, unsigned int size)
 {
 	if (!romloaded) return false;
+	zmz_close_netplay();
 	return retro_unserialize(data, size);
 }
 
@@ -1068,11 +1069,18 @@ void zmz_main()
 		
 	nonewgfx: ;
 		extern unsigned char GUIQuit;
-		if (GUIQuit==1) break;
+		if (GUIQuit==1)
+		{
+			zmz_close_netplay();
+			break;
+		}
+#define setbyte(byte) extern unsigned char byte; byte=1
+#define togglebyte(byte) extern unsigned char byte; byte^=1
 #define key(keyid, code) if (keyid && pressed[keyid]==1) { pressed[keyid]=2; code; }
-#define keybyte(keyid, byte) key(keyid, extern unsigned char byte; byte=1)
-#define keybytetoggle(keyid, byte) key(keyid, extern unsigned char byte; byte^=1)
-#define keybytereturn(keyid, byte) key(keyid, extern unsigned char byte; byte=1; break)
+#define keybyte(keyid, byte) key(keyid, setbyte(byte))
+#define keybytetoggle(keyid, byte) key(keyid, togglebyte(byte))
+#define keybytetogglenonet(keyid, byte) key(keyid, togglebyte(byte))
+#define keybytereturn(keyid, byte) key(keyid, setbyte(byte); break)
 		keybytereturn(KeyQuickSnapShot, SSKeyPressed);
 		keybytetoggle(KeyQuickClock, TimerEnable);
 		keybytereturn(KeyQuickSaveSPC, SPCKeyPressed);
@@ -1193,7 +1201,7 @@ bool zmz_open_netplay(const char * mynick, const char * host, uint16_t port)
 	cb.sample_cb=retro_audio_sample;
 	cb.state_cb=retro_input_state;
 	
-	zmz_netplay_handle=netplay_new(host, port, 16, &cb, false, mynick);
+	zmz_netplay_handle=netplay_new(host, port, 128, &cb, false, mynick);
 	if (!zmz_netplay_handle) return false;
 	
 	retro_set_video_refresh(video_frame_net);
@@ -1224,7 +1232,6 @@ extern char GUINetHostIp[29];
 extern char GUINetPort[8];
 void zmz_open_netplay_raw(bool server)
 {
-puts("WINGCAP");
 	//extern unsigned char GUIQuit;
 	//GUIQuit=2;
 	extern unsigned int GUICBHold;

@@ -167,7 +167,7 @@ struct delta_frame
    bool used_real;
 };
 
-#define UDP_FRAME_PACKETS 16
+#define UDP_FRAME_PACKETS 128
 #define MAX_SPECTATORS 16
 
 #define NETPLAY_CMD_ACK 0
@@ -574,10 +574,7 @@ static uint32_t implementation_magic_value(void)
    for (i = 0; i < len; i++)
       res ^= lib[i] << (i & 0xf);
 
-   //const char *ver = ZVERSION;
-#ifdef DEBUG
-   const char *ver = "0.9.9.4";
-#endif
+   const char *ver = ZVERSION;
    len = strlen(ver);
    for (i = 0; i < len; i++)
       res ^= ver[i] << ((i & 0xf) + 16);
@@ -688,7 +685,7 @@ static bool get_info(netplay_t *handle)
 
    if (implementation_magic_value() != ntohl(header[1]))
    {
-      RARCH_ERR("Implementations differ, make sure you're using exact same libretro implementations and RetroArch version.\n");
+      RARCH_ERR("Implementations differ, make sure you're using exact same libretro implementations and ZMZ version.\n");
       return false;
    }
 
