@@ -3473,7 +3473,7 @@ NEWSYM GUINetChatNick, times 16 db 0
 NEWSYM GUINetHostIp, times 29 db 0
 GUINetOptnsTextG db 'YOUR IP: '
 NEWSYM GUINetMyIp, times 29 db 0
-NEWSYM GUINetPort, db '55435',0,0,0
+NEWSYM GUINetPort, db '21101',0,0,0
 GUINetActiveTextbox db 0,0,0
 GUINetUnderscore db '_',0
 

@@ -1116,14 +1116,25 @@ void savespcdata()
     
     extern const unsigned char SPCROM[64];
     
+    strcpy(SPCHeader, "SNES-SPC700 Sound File Data v0.30");
+    SPCHeader[0x21]=0x1A;
+    SPCHeader[0x22]=0x1A;
+    SPCHeader[0x23]=0x1A;
+    SPCHeader[0x24]=0x0A;
+
+    extern unsigned int infoloc;
+    memcpy(SPCHeader+0x4E, ((unsigned char *)romdata)+infoloc, 21);
+
+    //0009Eh-000A1h - Date the SPC was Dumped
+    time_t t = time(0);
+    struct tm *lt = localtime(&t);
+    SPCHeader[0x9E]=lt->tm_mday;
+    SPCHeader[0x9F]=lt->tm_mon+1;
+    SPCHeader[0xA0]=(lt->tm_year+1900)&0xFF;
+    SPCHeader[0xA1]=((lt->tm_year+1900)>>8)&0xFF;
+    
     if (block_SND_len==66560)
     {
-      strcpy(SPCHeader, "SNES-SPC700 Sound File Data v0.30");
-      SPCHeader[0x21]=0x1A;
-      SPCHeader[0x22]=0x1A;
-      SPCHeader[0x23]=0x1A;
-      SPCHeader[0x24]=0x0A;
-      
       SPCMainRam=block_SND;
       
       const char * smpregs=block_SND+65536;
@@ -1141,17 +1152,6 @@ void savespcdata()
       memset(SPCFooter+128, 0, 64);
       memcpy(SPCFooter+192, SPCROM, 64);
     }
-
-    extern unsigned int infoloc;
-    memcpy(SPCHeader+0x4E, ((unsigned char *)romdata)+infoloc, 21);
-
-    //0009Eh-000A1h - Date the SPC was Dumped
-    time_t t = time(0);
-    struct tm *lt = localtime(&t);
-    SPCHeader[0x9E]=lt->tm_mday;
-    SPCHeader[0x9F]=lt->tm_mon+1;
-    SPCHeader[0xA0]=(lt->tm_year+1900)&0xFF;
-    SPCHeader[0xA1]=((lt->tm_year+1900)>>8)&0xFF;
     
     if (SPCMainRam)
     {

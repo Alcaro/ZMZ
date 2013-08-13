@@ -426,7 +426,7 @@ ${JMADIR}/zsnesjma${OE}: ${JMADIR}/zsnesjma.cpp ${JMADIR}/jma.h \
 ${MMLIBDIR}/mm${OE}: ${MMLIBDIR}/mm.c ${MMLIBDIR}/mm.h
 ${MMLIBDIR}/windows${OE}: ${MMLIBDIR}/windows.c ${MMLIBDIR}/mm.h
 
-${NETDIR}/netplay${OE}: ${NETDIR}/netplay.c ${NETDIR}/netplay.h ${NETDIR}/netplay_compat.h
+${NETDIR}/netplay${OE}: ${NETDIR}/netplay.c ${NETDIR}/netplay.h
 
 ${VIDEODIR}/2xsaiw${OE}: ${VIDEODIR}/2xsaiw.asm macros.mac
 ${VIDEODIR}/hq2x16${OE}: ${VIDEODIR}/hq2x16.asm macros.mac

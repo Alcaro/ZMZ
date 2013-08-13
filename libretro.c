@@ -25,7 +25,7 @@ maister, libretro dev:
 #include "cfg.h"
 #include <stdio.h>
 #include "net/netplay.h"
-netplay_t * zmz_netplay_handle=NULL;
+netplay * zmz_netplay_handle=NULL;
 bool zmz_open_netplay(const char * mynick, const char * host, uint16_t port);
 void zmz_close_netplay();
 
@@ -1041,15 +1041,10 @@ bool zmz_core_is_snes9x()
 
 void zmz_show_message(const char * msg)
 {
-	Msgptr=msg;
-	MessageOn=MsgCount;
-}
-
-void zmz_show_message_copy(const char * msg)
-{
 	static char msgbuf[512];
 	strcpy(msgbuf, msg);
-	zmz_show_message(msgbuf);
+	Msgptr=msg;
+	MessageOn=MsgCount;
 }
 
 
@@ -1063,9 +1058,8 @@ void zmz_main()
 	zmz_set_controllers();
 	while (true)
 	{
-		if (zmz_netplay_handle) netplay_pre_frame(zmz_netplay_handle);
-		retro_run();
-		if (zmz_netplay_handle) netplay_post_frame(zmz_netplay_handle);
+		if (zmz_netplay_handle) netplay_run(zmz_netplay_handle);
+		else retro_run();
 		
 	nonewgfx: ;
 		extern unsigned char GUIQuit;
@@ -1191,27 +1185,27 @@ bool zmz_open_netplay(const char * mynick, const char * host, uint16_t port)
 {
 	if (zmz_netplay_handle) zmz_close_netplay();
 	
-	static bool net_inited=false;
-	if (!net_inited) net_inited=netplay_init_network();
-	if (!net_inited) return false;
-	
 	static struct retro_callbacks cb;
-	cb.frame_cb=retro_video_refresh;
-	cb.sample_batch_cb=retro_audio_sample_batch;
-	cb.sample_cb=retro_audio_sample;
-	cb.state_cb=retro_input_state;
+	cb.video_refresh_cb=retro_video_refresh;
+	cb.audio_sample_batch_cb=retro_audio_sample_batch;
+	cb.audio_sample_cb=retro_audio_sample;
+	cb.input_state_cb=retro_input_state;
+	cb.input_poll_cb=retro_input_poll;
 	
-	zmz_netplay_handle=netplay_new(host, port, 128, &cb, false, mynick);
+	zmz_netplay_handle=netplay_create(mynick, host, port, &cb);
 	if (!zmz_netplay_handle) return false;
 	
-	retro_set_video_refresh(video_frame_net);
-	retro_set_audio_sample(audio_sample_net);
-	retro_set_audio_sample_batch(audio_sample_batch_net);
-	retro_set_input_poll(input_poll_net);
-	retro_set_input_state(input_state_net);
+	retro_set_video_refresh(netplay_video_refresh);
+	retro_set_audio_sample(netplay_audio_sample);
+	retro_set_audio_sample_batch(netplay_audio_sample_batch);
+	retro_set_input_poll(netplay_input_poll);
+	retro_set_input_state(netplay_input_state);
 	
-	void powercycle(bool sramload, bool romload);
-	powercycle(false, false);
+	if (romloaded)
+	{
+		void powercycle(bool sramload, bool romload);
+		powercycle(false, false);
+	}
 }
 
 void zmz_close_netplay()
