@@ -6,166 +6,17 @@ typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 
-#define _WIN32_WINNT 0x0501
-#include <winsock2.h>
-#include <ws2tcpip.h>
-
-struct socket {
-	int fd;
-	bool connected;
-	struct sockaddr * addr;
-	int addrlen;
-};
-
-static bool socket_new(struct socket * sock, const char * host, unsigned short port)
-{
-#ifdef _WIN32
-	static bool inited=false;
-	if (!inited)
-	{
-		WSADATA wsaData;
-		WSAStartup(MAKEWORD(2, 2), &wsaData);
-		inited=true;
-	}
-#endif
-	
-	memset(sock, 0, sizeof(sock));
-	sock->fd=-1;
-	
-	char portstr[16];
-	sprintf(portstr, "%i", port);
-	
-	struct addrinfo hints;
-	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_flags=(host?0:AI_PASSIVE);
-	hints.ai_family=AF_UNSPEC;
-	hints.ai_socktype=SOCK_DGRAM;
-	hints.ai_protocol=IPPROTO_UDP;
-	
-	struct addrinfo * addr=NULL;
-	struct addrinfo * addrwalk;
-	
-	if (getaddrinfo(host?host:NULL, portstr, &hints, &addr)!=0) goto err;
-	
-	addrwalk=addr;
-	
-	do {
-//#define a(y) printf(#y"=%i\n",y)
-//a(AF_UNSPEC);a(AF_INET);a(AF_INET6);
-//printf("MKSOCK=%i:%i:%i::%i:%i:",(bool)host,addrwalk->ai_family, addrwalk->ai_socktype, addrwalk->ai_protocol, addrwalk->ai_addrlen, addrwalk->ai_addr->sa_family);
-//int i;for(i=0;i<addrwalk->ai_addrlen-2;i++)printf("%.2X",(unsigned char)addrwalk->ai_addr->sa_data[i]);puts("");
-		sock->fd=socket(addrwalk->ai_family, addrwalk->ai_socktype, addrwalk->ai_protocol);
-		if (sock->fd<0)
-			continue;
-		
-		if (host || (bind(sock->fd, addrwalk->ai_addr, addrwalk->ai_addrlen)==0)) break;
-		
-		close(sock->fd);
-	} while((addrwalk=addrwalk->ai_next) != NULL);
-	
-#ifdef _WIN32
-	u_long iMode=1;
-	ioctlsocket(sock->fd, FIONBIO, &iMode); 
-#endif
-#ifndef _WIN32
-	fcntl(core->fd, F_SETFL, fcntl(core->fd, F_GETFL, 0)|O_NONBLOCK);
-#endif
-	
-	if (sock->fd<0) goto err;
-	
-	sock->connected=(host);
-	
-	sock->addrlen=addr->ai_addrlen;
-	sock->addr=malloc(addr->ai_addrlen);
-	if (sock->connected) memcpy(sock->addr, addr->ai_addr, addr->ai_addrlen);
-	
-	freeaddrinfo(addr);
-	return true;
-	
-err:
-	if (addr) freeaddrinfo(addr);
-	if (sock->fd>=0) close(sock->fd);
-	sock->fd=-1;
-	return false;
-}
-
-static int socket_read(struct socket * sock, void * buffer, int buflen)
-{
-	if (sock->connected)
-	{
-		char addrcopy[sock->addrlen];
-		int ret;
-		do {
-			ret=recvfrom(sock->fd, buffer, buflen, 0, (struct sockaddr*)addrcopy, &sock->addrlen);
-		} while (ret>0 && !!memcmp(sock->addr, addrcopy, sock->addrlen));
-		if (ret<=0) ret=0;
-		return ret;
-	}
-	else
-	{
-		memset(sock->addr, 0, sock->addrlen);
-		int ret=recvfrom(sock->fd, buffer, buflen, 0, sock->addr, &sock->addrlen);
-		if (ret<=0) ret=0;
-		else sock->connected=true;
-		return ret;
-	}
-}
-
-static void socket_write(struct socket * sock, void * buffer, int buflen)
-{
-#ifndef DEBUG
-#error no seriously.
-#endif
-//if (rand()&1) return;//50% packet loss omg panic! extreme circumstances are the best for testing that stuff works
-printf("SEND=C=%i,L=%i,F=%i",sock->connected,buflen,sock->addr->sa_family);
-	if (sock->connected) printf(",R=%i",sendto(sock->fd, buffer, buflen, 0, sock->addr, sock->addrlen));
-puts("");
-}
-
-static void socket_close(struct socket * sock)
-{
-	if (sock->addr) free(sock->addr);
-	sock->addr=0;
-	sock->addrlen=0;
-	if (sock->fd>=0) close(sock->fd);
-	sock->fd=-1;
-}
-
-static const char * socket_other_end(struct socket * sock)
-{
-	if (!sock->connected) return NULL;
-	static int addrstrlen=16;
-	static char * addrstr=NULL;
-	if (!addrstr) addrstr=malloc(addrstrlen);
-	
-retry: ;
-	int err=getnameinfo(sock->addr, sock->addrlen, addrstr, addrstrlen, NULL, 0, NI_NUMERICHOST);
-	if (!err) return addrstr;
-	if (err==WSAEFAULT)
-	{
-		addrstrlen*=2;
-		addrstr=realloc(addrstr, addrstrlen);
-		goto retry;
-	}
-	return NULL;
-	
-	////wtf, inet_ntop doesn't exist on xp?
-	//if (inet_ntop(sock->addr->sa_family, sock->addr, addrstr, addrstrlen)==0/*wtf, this one is documented to return pointer, why doesn't it*/)
-	//{
-	//	if (WSAGetLastError()==ERROR_INVALID_PARAMETER && addrstrlen<1024)
-	//	{
-	//		addrstrlen*=2;
-	//		addrstr=realloc(addrstr, addrstrlen);
-	//		goto retry;
-	//	}
-	//	return NULL;
-	//}
-}
+#include "udpsock.c"
 
 #ifdef __GNUC__
 #pragma GCC diagnostic error "-Wpadded"//putting it here is undefined behaviour in gcc 4.5; putting it earlier throws for padding in libretro.h and I can't change that.
 //#pragma GCC diagnostic push//only exists in gcc 4.6
 //#pragma GCC diagnostic error "-Wpadded"
+#endif
+
+#define WIREVERSION 0
+#ifndef DEBUG
+#error no seriously.
 #endif
 
 struct packet_base {
@@ -219,6 +70,19 @@ struct pack_gameplay {
 	uint8 chatmsg[];//this should not be an issue because if it is then you're spamming.
 };
 
+struct pack_abort {
+	uint32 packtype;//=5
+	uint32 my_signature;
+	
+	uint32 why;
+};
+
+const char * abortreasons[]={
+	"Libretro core mismatch",
+	"Libretro core version mismatch",
+	"Game mismatch",//used for all SRAM errors too
+};
+
 #ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wpadded"
 //#pragma GCC diagnostic pop
@@ -228,7 +92,7 @@ struct netplay_setup {
 	//splitting this off so it can be freed once the channel is open
 	int frames_until_resend;
 	
-	void * sram;
+	void * sram;//we can just ask the core for this, but lazy...
 	uint32 sram_size;
 	uint8 * sram_ack;
 	//server:
@@ -236,7 +100,11 @@ struct netplay_setup {
 	//1=not acknowledged
 	//2=acknowledged
 	//client:
-	//same, 1 is impossible
+	//same, except 1 is impossible
+	
+	uint32 corehash;
+	uint32 coreverhash;
+	uint32 gamehash;
 	
 	uint16 * videodata;
 };
@@ -251,12 +119,19 @@ struct netplay {
 #define state_c_getsram 5
 #define state_playing 6
 	uint32 signature;
-	uint32 myplayerid;//0, 1
+	uint32 myplayerid;//0 or 1
 	struct netplay_setup * setup;
 	struct retro_callbacks * cb;
+	
+	char mynick[65];
+	char othernick[65];
 };
 
 static netplay* ghandle=NULL;
+
+extern unsigned int CRC32;
+
+#include <zlib.h>
 
 netplay* netplay_create(const char * mynick, const char * host, unsigned short port, struct retro_callbacks * cb)
 {
@@ -278,8 +153,17 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 	
 	handle->setup->frames_until_resend=1;
 	
+	struct retro_system_info info;
+	retro_get_system_info(&info);
+	handle->setup->corehash=crc32(0, info.library_name, strlen(info.library_name));
+	handle->setup->coreverhash=crc32(0, info.library_version, strlen(info.library_version));
+	handle->setup->gamehash=CRC32;
+printf("MYHASHES=%.8X,%.8X,%.8X\n",handle->setup->corehash,handle->setup->coreverhash,handle->setup->gamehash);
+	
 	handle->myplayerid=(!host);
 	handle->cb=cb;
+	strcpy(handle->mynick, mynick);
+	strcpy(handle->othernick, "");
 	
 	if (host)
 	{
@@ -315,14 +199,19 @@ void netplay_run(netplay* handle)
 	while (packlen=socket_read(&handle->sock, raw_packet, 2048))
 	{
 		struct packet_base * pack_base=(void*)raw_packet;
-printf("SIG=[%.8X:%.8X]",pack_base->signature,handle->signature);
 		if (handle->signature && pack_base->signature!=handle->signature) continue;
 		handle->signature=pack_base->signature;
 		
 		if (pack_base->packtype==1 && handle->state==state_s_waitcon)
 		{
 			struct pack_setup * packet=(void*)raw_packet;
+			
+			memcpy(handle->othernick, packet->nick, 64);
 			printf("SRC=[%s]", packet->nick);
+			
+			printf("MYHASHES=%.8X,%.8X,%.8X\n",handle->setup->corehash,handle->setup->coreverhash,handle->setup->gamehash);
+			printf("RMHASHES=%.8X,%.8X,%.8X\n",packet->core_hash,packet->core_version_hash,packet->game_hash);
+			
 			handle->state=state_s_sendsetup;
 		}
 	}
@@ -333,13 +222,18 @@ printf("SIG=[%.8X:%.8X]",pack_base->signature,handle->signature);
 			handle->setup->frames_until_resend--;
 			if (!handle->setup->frames_until_resend)
 			{
-				struct pack_setup packet = { 1, handle->signature, 0, 42/*corehash*/, 69/*coreverhash*/, 42/*gamehash*/, 69/*sramsize*/, "ZMZ"/*mynick*/ };
+				struct pack_setup packet = { 1, handle->signature,
+																		WIREVERSION,
+																		handle->setup->corehash, handle->setup->coreverhash, handle->setup->gamehash,
+																		handle->setup->sram_size };
+				strcpy(packet.nick, handle->mynick);
 				socket_write(&handle->sock, &packet, sizeof(packet));
 				handle->setup->frames_until_resend=60/5;
 			}
-			//free(handle->setup);
-			//handle->setup=NULL;
 		}
+		//free(handle->setup->sram_ack);
+		//free(handle->setup);
+		//handle->setup=NULL;
 		handle->cb->video_refresh_cb(handle->setup->videodata, 256, 224, 512);
 	}
 	
