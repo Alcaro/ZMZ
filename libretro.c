@@ -5,16 +5,6 @@ ToadKing, snes9x-next dev:
 - Color HDMA in snes9x-next (show wicked star story)
  - turns out it should be that way, SUPER MARIOWORLD specific hack
 
-maister, snes9x-libretro dev:
-- If input from player two should be ignored in favor of input from player one
-- Disable layers in snes9x (may need to defer to maister)
-& - Disable sound channels in snes9x
- - asked, answer was not no; may appear later
-- If I am supposed to be unable to unplug a controller
-
-OV2, snes9x original dev:
-- If snes9x should die in an infinite loop of CMemory::LoadROMInt returning FALSE on tiny files; floating.muncher.se/temp/die.zip
-
 maister, libretro dev:
 - Return value of retro_audio_sample_batch (number of used samples?)
 - Whether there is any way to tell rarch to give me more than two sound channels

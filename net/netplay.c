@@ -45,11 +45,15 @@ static bool socket_new(struct socket * sock, const char * host, unsigned short p
 	struct addrinfo * addr=NULL;
 	struct addrinfo * addrwalk;
 	
-	if (getaddrinfo(NULL, portstr, &hints, &addr)!=0) goto err;
+	if (getaddrinfo(host?host:NULL, portstr, &hints, &addr)!=0) goto err;
 	
 	addrwalk=addr;
 	
 	do {
+//#define a(y) printf(#y"=%i\n",y)
+//a(AF_UNSPEC);a(AF_INET);a(AF_INET6);
+//printf("MKSOCK=%i:%i:%i::%i:%i:",(bool)host,addrwalk->ai_family, addrwalk->ai_socktype, addrwalk->ai_protocol, addrwalk->ai_addrlen, addrwalk->ai_addr->sa_family);
+//int i;for(i=0;i<addrwalk->ai_addrlen-2;i++)printf("%.2X",(unsigned char)addrwalk->ai_addr->sa_data[i]);puts("");
 		sock->fd=socket(addrwalk->ai_family, addrwalk->ai_socktype, addrwalk->ai_protocol);
 		if (sock->fd<0)
 			continue;
@@ -76,7 +80,6 @@ static bool socket_new(struct socket * sock, const char * host, unsigned short p
 	if (sock->connected) memcpy(sock->addr, addr->ai_addr, addr->ai_addrlen);
 	
 	freeaddrinfo(addr);
-	sock->connected=true;
 	return true;
 	
 err:
@@ -93,7 +96,6 @@ static int socket_read(struct socket * sock, void * buffer, int buflen)
 		char addrcopy[sock->addrlen];
 		int ret;
 		do {
-printf("GET2=%i\n",ret);
 			ret=recvfrom(sock->fd, buffer, buflen, 0, (struct sockaddr*)addrcopy, &sock->addrlen);
 		} while (ret>0 && !!memcmp(sock->addr, addrcopy, sock->addrlen));
 		if (ret<=0) ret=0;
@@ -101,8 +103,8 @@ printf("GET2=%i\n",ret);
 	}
 	else
 	{
+		memset(sock->addr, 0, sock->addrlen);
 		int ret=recvfrom(sock->fd, buffer, buflen, 0, sock->addr, &sock->addrlen);
-printf("GET1=%i\n",ret);
 		if (ret<=0) ret=0;
 		else sock->connected=true;
 		return ret;
@@ -115,8 +117,8 @@ static void socket_write(struct socket * sock, void * buffer, int buflen)
 #error no seriously.
 #endif
 //if (rand()&1) return;//50% packet loss omg panic! extreme circumstances are the best for testing that stuff works
-printf("SEND=%i,%i",sock->connected,buflen);
-	if (sock->connected) printf(",%i",sendto(sock->fd, buffer, buflen, 0, sock->addr, sock->addrlen));
+printf("SEND=C=%i,L=%i,F=%i",sock->connected,buflen,sock->addr->sa_family);
+	if (sock->connected) printf(",R=%i",sendto(sock->fd, buffer, buflen, 0, sock->addr, sock->addrlen));
 puts("");
 }
 
@@ -281,10 +283,10 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 	
 	if (host)
 	{
-		handle->signature =rand()&255;
-		handle->signature^=rand()&255<<8;
-		handle->signature^=rand()&255<<16;//rand_max is less than uin32_max on windows, just shuffle it a bit.
-		handle->signature^=rand()&255<<24;
+		handle->signature =(rand()&255);
+		handle->signature^=(rand()&255)<<8;
+		handle->signature^=(rand()&255)<<16;//rand_max is less than uin32_max on windows, just shuffle it a bit.
+		handle->signature^=(rand()&255)<<24;
 		if (handle->signature==0) handle->signature=0x26594131;//signature 0 is invalid, just map it to something random.
 	}
 	

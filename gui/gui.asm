@@ -616,6 +616,7 @@ LoadDetermine:
   mov byte[GUICheatMenuData+14],1
   mov byte[GUICheatMenuData+14*2],1
   mov byte[GUIMiscMenuData+14*2],1
+  mov byte[GUINetPlayMenuData],1
 %ifdef __MSDOS__
   mov byte[GUINetPlayMenuData+14],2
 %endif
@@ -630,6 +631,7 @@ LoadDetermine:
   mov byte[GUICheatMenuData+14],2
   mov byte[GUICheatMenuData+14*2],2
   mov byte[GUIMiscMenuData+14*2],2
+  mov byte[GUINetPlayMenuData],2
 .noromloaded
   ret
 
@@ -1852,6 +1854,8 @@ GUITryMenuItem:                     ; Defines which menu item calls what window 
 .nobrowsec
 .nocheat
   cmp byte[GUIcmenupos],5
+  jne near .nonet
+  cmp byte[romloadskip],0
   jne near .nonet
   EXTSYM zmz_get_my_ip
   call zmz_get_my_ip
