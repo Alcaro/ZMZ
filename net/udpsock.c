@@ -1,6 +1,7 @@
 #define _WIN32_WINNT 0x0501
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <stdio.h>
 
 struct socket {
 	int fd;
@@ -104,7 +105,7 @@ static void socket_write(struct socket * sock, void * buffer, int buflen)
 #ifndef DEBUG
 #error no seriously.
 #endif
-//if (rand()&1) return;//50% packet loss omg panic! extreme circumstances are the best for testing that stuff works
+if (rand()&1) return;//50% packet loss omg panic! extreme circumstances are the best for testing that stuff works
 	if (sock->connected) sendto(sock->fd, buffer, buflen, 0, sock->addr, sock->addrlen);
 }
 
