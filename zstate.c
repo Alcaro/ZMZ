@@ -149,7 +149,7 @@ static bool s9x_to_zst(const unsigned char * s9x, unsigned int s9xlen, unsigned 
 		int i;//CGRAM
 		for (i=0;i<256;i++)
 		{
-			zst[0x618+i*2+0]=ppu[0x3F+i*2+1];//it's little endian in one and big in the other for some dumb reason
+			zst[0x618+i*2+0]=ppu[0x3F+i*2+1];//it's little endian in zsnes and big in s9x for some dumb reason
 			zst[0x618+i*2+1]=ppu[0x3F+i*2+0];
 		}
 		

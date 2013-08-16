@@ -128,6 +128,11 @@ struct netplay_setup {
 	uint16 * videodata;
 };
 
+struct netplay_frame {
+	void * savestate;
+	uint16 my_input;
+};
+
 struct netplay {
 	struct socket sock;
 	int state;
@@ -145,15 +150,17 @@ struct netplay {
 	
 	uint32 time_since_last;
 	
-	char mynick[65];
-	char othernick[65];
+	char mynick[64+1];
+	char othernick[64+1];
 	
 	//these start being used once gameplay starts
 	
 	uint32 speculative_frames;
 	uint32 final_frames;
-	uint16 myinput[64];
-	uint8 input_state;
+	
+	void * savestates[128];
+	uint16 my_input[128];
+	//index to this is speculative_frames%128
 	
 	uint8 last_lag_frames[60];
 	uint8 last_lag_frames_index;
@@ -179,6 +186,9 @@ static void netplay_free_setup(netplay* handle)
 
 static void netplay_abort(netplay* handle, int why)
 {
+#ifndef DEBUG
+#error no seriously.
+#endif
 char
 *e=0;
 *e=0;
@@ -263,7 +273,6 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 void netplay_run(netplay* handle)
 {
 	ghandle=handle;
-printf("STATE=%i\n",handle->state);
 	while (true)
 	{
 		char raw_packet[2048];
@@ -355,16 +364,10 @@ printf("STATE=%i\n",handle->state);
 			
 			bool done=true;
 			int i;
-#ifndef DEBUG
-#error no seriously.
-#endif
-printf("SRAMACK=");
 			for (i=0;i<handle->setup->sram_ack_size_without_header;i++)
 			{
-printf("%.2X",handle->setup->sram_ack->ack[i]);
 				if (handle->setup->sram_ack->ack[i]!=0xFF) done=false;
 			}
-puts("");
 			if (done)
 			{
 				netplay_free_setup(handle);
@@ -417,10 +420,10 @@ puts("");
 	if (handle->state!=state_s_waitcon && handle->state!=state_aborted)
 	{
 		handle->time_since_last++;
-		//if (handle->time_since_last>=120) netplay_abort(handle, abort_ping_timeout);
 #ifndef DEBUG
 #error no seriously.
 #endif
+		//if (handle->time_since_last>=120) netplay_abort(handle, abort_ping_timeout);
 		if (handle->time_since_last>=120) exit(1);
 	}
 	if (handle->state==state_s_sendsram)
