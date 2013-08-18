@@ -9,12 +9,17 @@ typedef uint32_t uint32;
 
 //standard port ID is 21101
 
+//todo:
+//if sent data in 60 frames is 90 less than what I get, wait for one frame, reset timers
+//if I take >2100ms for 120 frames, add input lag to self
+
 #ifdef __GNUC__
-#pragma GCC diagnostic error "-Wpadded"//putting it here is undefined behaviour in gcc 4.5; putting it earlier throws for padding in libretro.h and I can't change that.
+#pragma GCC diagnostic error "-Wpadded"//putting it here is undefined behaviour in gcc 4.5, but seems to work; putting it earlier throws for padding in libretro.h and I can't change that.
 //#pragma GCC diagnostic push//only exists in gcc 4.6
 //#pragma GCC diagnostic error "-Wpadded"
 #endif
 
+#define WIRESIGNATURE 0x6D6E6952
 #define WIREVERSION 0
 #ifndef DEBUG
 #error no seriously.
@@ -32,6 +37,7 @@ struct pack_setup {
 	//if little endian communicates with big endian, packet type is backwards too and the receiver can turn it back; however, big endian is rare and can't be tested
 	uint32 signature;//randomly generated from whatever the app feels like; packets with wrong signature are ignored
 	
+	uint32 format_signature;//0x6D6E6952
 	uint32 format_version;//0
 	uint32 core_hash;
 	uint32 core_version_hash;
@@ -86,6 +92,7 @@ struct pack_abort {
 };
 
 const char * abortreasons[]={
+	//yeah, these aren't really in any valid order.
 #define abort_bad_core 0
 	"Libretro core mismatch",
 #define abort_bad_core_ver 1
@@ -100,7 +107,9 @@ const char * abortreasons[]={
 	"ZMZ version mismatch",
 #define abort_bad_endian 6
 	"Endianness mismatch",//ZMZ only runs on Windows, which is only little endian (http://support.microsoft.com/kb/102025), so this won't happen, but better unused features than lacking an used one
-#define abort_count 7
+#define abort_not_host 7
+	"Other end is not ZMZ",
+#define abort_count 8
 };
 
 #ifdef __GNUC__
@@ -287,7 +296,7 @@ void netplay_run(netplay* handle)
 			netplay_abort(handle, abort_bad_endian);
 			//the other party won't understand our aborts, so it'll start aborting too
 			//signature will be right since it will be swapped back
-			//it won't pong loop since aborts are swapped back, not ponged
+			//it won't pong loop since aborts are not ponged
 		}
 		
 		if (pack_base->packtype==pack_setup_id && handle->state==state_s_waitcon)
@@ -298,6 +307,7 @@ void netplay_run(netplay* handle)
 			handle->state=state_s_sendsetup;
 			handle->setup->frames_until_resend=1;
 			
+			if (packet->format_signature!=WIRESIGNATURE) netplay_abort(handle, abort_not_host);
 			if (packet->format_version!=WIREVERSION) netplay_abort(handle, abort_bad_host);
 			
 			int i; for (i=0;i<64;i++) handle->othernick[i]=packet->nick[i];
@@ -321,6 +331,9 @@ void netplay_run(netplay* handle)
 			handle->state=state_c_getsram;
 			
 			//these were checked on the other end already, but why not
+			if (packet->format_signature!=0x6D6E6952) netplay_abort(handle, abort_not_host);
+			if (packet->format_version!=WIREVERSION) netplay_abort(handle, abort_bad_host);
+			
 			if (handle->setup->corehash!=packet->core_hash) netplay_abort(handle, abort_bad_core);
 			if (handle->setup->coreverhash!=packet->core_version_hash) netplay_abort(handle, abort_bad_core_ver);
 			if (handle->setup->gamehash!=packet->game_hash) netplay_abort(handle, abort_bad_game);
@@ -467,7 +480,7 @@ void netplay_run(netplay* handle)
 			if (!handle->setup->frames_until_resend)
 			{
 				struct pack_setup packet = { pack_setup_id, handle->signature,
-																		WIREVERSION,
+																		WIRESIGNATURE, WIREVERSION,
 																		handle->setup->corehash, handle->setup->coreverhash, handle->setup->gamehash,
 																		handle->setup->sram_size };
 				int i; for (i=0;i<64;i++) packet.nick[i]=handle->mynick[i];

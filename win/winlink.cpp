@@ -2540,6 +2540,13 @@ void clear_display()
       {
         if (vsyncon == 1)
         {
+          //http://msdn.microsoft.com/en-us/library/aa911354.aspx
+          //In a preemptive multithreaded environment, it is unlikely that the
+          //IDirectDraw::WaitForVerticalBlank method can synchronize with the vertical-blank interval.
+          //Instead, use appropriate wait flags to time blits and flips.
+          
+          //apparently the zsnes devs didn't read that; either that or they can't figure out what to do instead
+          //but neither can I, so whatever.
           if (lpDD->WaitForVerticalBlank(DDWAITVB_BLOCKBEGIN, NULL) != DD_OK)
           {
             DDrawError();
