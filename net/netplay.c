@@ -4,6 +4,11 @@
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
+typedef uint64_t uint64;
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
 
 #include "udpsock.c"
 
@@ -19,7 +24,7 @@ typedef uint32_t uint32;
 //#pragma GCC diagnostic error "-Wpadded"
 #endif
 
-#define WIRESIGNATURE 0x6D6E6952
+#define WIRESIGNATURE 0x52696E6D
 #define WIREVERSION 0
 #ifndef DEBUG
 #error no seriously.
@@ -75,11 +80,10 @@ struct pack_gameplay {
 	
 	uint32 this_frame;//how many frames the sender has predictively emulated
 	uint32 acknowledge_frame;//how much the packet sender has received from the other party and conclusively emulated
-	uint32 num_frames;//number of frames in this packet; should be identical to the difference
-	uint16 data[64];//most of this should remain unused
+	uint16 data[64];//size is equal to the difference between the above; should remain mostly unused
 	
 	uint32 chat_len;
-	uint32 chat_frame;//when the message was sent; multiple messages can not be sent without a roundtrip
+	uint32 chat_frame;//when the message was sent (so it can be acknowledged); multiple messages can not be sent without a roundtrip
 	uint8 chatmsg[];//this should not be an issue because if it is then you're spamming.
 };
 
@@ -92,7 +96,7 @@ struct pack_abort {
 };
 
 const char * abortreasons[]={
-	//yeah, these aren't really in any valid order.
+	//these aren't really in any valid order.
 #define abort_bad_core 0
 	"Libretro core mismatch",
 #define abort_bad_core_ver 1
@@ -137,11 +141,6 @@ struct netplay_setup {
 	uint16 * videodata;
 };
 
-struct netplay_frame {
-	void * savestate;
-	uint16 my_input;
-};
-
 struct netplay {
 	struct socket sock;
 	int state;
@@ -166,14 +165,25 @@ struct netplay {
 	
 	uint32 speculative_frames;
 	uint32 final_frames;
+	uint32 send_from_frame;
+	
+	uint8 my_input_lag;
 	
 	void * savestates[128];
 	uint16 my_input[128];
+	uint32 savestate_size;
 	//index to this is speculative_frames%128
 	
-	uint8 last_lag_frames[60];
-	uint8 last_lag_frames_index;
-	uint32 last_lag_frames_sum;
+	bool is_replay;
+	uint16 inputs[2];
+	
+	//reset when !speculative_frames%60
+	int out_packets; int out_frames;
+	int in_packets; int in_frames;
+	//if (in_frames/in_packets)-(out_frames/out_packets)>1.5 then we're too much in front, skip frame
+	
+	//checked and reset when !speculative_frames%120
+	uint64 fpscheck;
 };
 
 static netplay* ghandle=NULL;
@@ -205,6 +215,13 @@ char
 	handle->state=state_aborted;
 	handle->myplayerid=why;
 	netplay_free_setup(handle);
+	
+	int i;
+	for (i=0;i<128;i++)
+	{
+		free(handle->savestates[i]);
+	}
+	
 	//TODO: print message
 }
 
@@ -268,7 +285,149 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 	
 	if (host) handle->state=state_c_sendsetup;
 	else handle->state=state_s_waitcon;
+	
+	int i;
+	for (i=0;i<128;i++)
+	{
+		handle->savestates[i]=NULL;
+	}
+	
 	return handle;
+}
+
+static void netplay_run_init(netplay* handle)
+{
+	netplay_free_setup(handle);
+	handle->state=state_playing;
+	
+#ifdef _WIN32
+	GetSystemTimeAsFileTime((FILETIME*)&handle->fpscheck);
+#else
+#error what
+#endif
+	
+	handle->savestate_size=retro_serialize_size();
+	
+	int i;
+	for (i=0;i<128;i++)
+	{
+		handle->savestates[i]=malloc(handle->savestate_size);
+	}
+}
+
+static void netplay_run_packet(netplay* handle, struct pack_gameplay* packet)
+{
+	handle->in_packets++;
+	handle->in_frames+=(packet->this_frame - packet->acknowledge_frame);
+	
+	handle->send_from_frame=max(handle->send_from_frame, packet->acknowledge_frame);
+	
+	if (packet->this_frame>handle->final_frames)
+	{
+		int id=0;
+		uint32 thisframe;
+		bool must_play=false;
+		for (thisframe=packet->acknowledge_frame;thisframe<packet->this_frame;thisframe++)
+		{
+			if (thisframe==handle->final_frames+1)
+			{
+				if (!must_play && handle->inputs[handle->myplayerid^1]!=packet->data[id])
+				{
+					retro_unserialize(handle->savestates[handle->final_frames%128], handle->savestate_size);
+					must_play=true;
+				}
+				if (must_play)
+				{
+					handle->inputs[handle->myplayerid^1]=packet->data[id];
+					handle->inputs[handle->myplayerid]=handle->my_input[handle->final_frames%128];
+					handle->is_replay=true;
+					retro_run();
+					handle->is_replay=false;
+				}
+				handle->final_frames++;
+			}
+			id++;
+		}
+		while (thisframe<handle->speculative_frames)
+		{
+			handle->is_replay=true;
+			retro_run();
+			handle->is_replay=false;
+			thisframe++;
+		}
+	}
+	
+	//TODO: chat messages
+}
+
+static void netplay_run_frame(netplay* handle)
+{
+	if (handle->speculative_frames%60==0)
+	{
+if(!handle->in_packets) puts("INOUTDIFF=inf");
+else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_frames)) / (handle->in_packets*handle->out_packets/**3/2*/));
+//		if ((handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_frames) > handle->in_packets*handle->out_packets*3/2)
+		if (0)
+		{
+			handle->out_packets=0;
+			handle->out_frames=0;
+			handle->in_packets=0;
+			handle->in_frames=0;
+			return;
+		}
+		
+		handle->out_packets=0;
+		handle->out_frames=0;
+		handle->in_packets=0;
+		handle->in_frames=0;
+	}
+	if (handle->speculative_frames%120==0)
+	{
+		uint64 oldfpscheck=handle->fpscheck;
+		
+#ifdef _WIN32
+		GetSystemTimeAsFileTime((FILETIME*)&handle->fpscheck);
+		printf("TIMER=%u\n",handle->fpscheck - oldfpscheck);
+		if (0)
+#else
+#error what
+#endif
+		{
+			handle->my_input_lag++;
+		}
+	}
+	
+	handle->speculative_frames++;
+	
+	uint16 myinput=0;
+	int i;
+	for (i=0;i<16;i++)//it only goes to 12, but a pile of zeroes is harmless.
+	{
+		myinput|=(handle->cb->input_state_cb(0, RETRO_DEVICE_JOYPAD, 0, i))<<i;
+	}
+	
+	handle->my_input[(handle->speculative_frames+handle->my_input_lag)%128]=myinput;
+	
+	handle->inputs[handle->myplayerid]=handle->my_input[handle->speculative_frames%128];
+	//keep handle->inputs[handle->myplayerid^1] as what it was last time
+	
+	struct pack_gameplay packet={
+		pack_gameplay_id, handle->signature, handle->speculative_frames, handle->final_frames
+	};
+	//int i;
+	for (i=0;i<handle->final_frames-handle->speculative_frames;i++)
+	{
+		packet.data[i]=handle->my_input[(handle->final_frames+i)%128];
+	}
+	
+	packet.chat_len=0;
+	socket_write(&handle->sock, &packet, sizeof(packet));
+	
+	handle->out_packets++;
+	handle->out_frames+=(packet.this_frame - packet.acknowledge_frame);
+	
+	retro_run();
+	retro_serialize(handle->savestates[handle->speculative_frames%128], handle->savestate_size);
 }
 
 //client (P2) sends struct setup every 200ms until it gets one back
@@ -277,7 +436,7 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 //server sends setup_data for any kilobyte marked unsent every 17ms (); kilobyte is marked sent
 //when client gets one, setup_ack is sent
 //once server is out of unsent kilobytes, all sent ones are marked unsent if not acknowledged, and resent; however, reset is not done more often than once per 200ms
-//once all kilobytes are sent, setup is done
+//once all kilobytes are acknowledged, setup is done
 
 void netplay_run(netplay* handle)
 {
@@ -383,8 +542,7 @@ void netplay_run(netplay* handle)
 			}
 			if (done)
 			{
-				netplay_free_setup(handle);
-				handle->state=state_playing;
+				netplay_run_init(handle);
 			}
 			continue;
 		}
@@ -421,13 +579,13 @@ void netplay_run(netplay* handle)
 		
 		if (pack_base->packtype==pack_gameplay_id && handle->state==state_c_getsram)
 		{
-			netplay_free_setup(handle);
-			handle->state=state_playing;
+			netplay_run_init(handle);
 			//fall through
 		}
 		if (pack_base->packtype==pack_gameplay_id && handle->state==state_playing)
 		{
-			//FIXME
+			struct pack_gameplay * packet=(void*)raw_packet;
+			netplay_run_packet(handle, packet);
 		}
 	}
 	if (handle->state!=state_s_waitcon && handle->state!=state_aborted)
@@ -493,8 +651,7 @@ void netplay_run(netplay* handle)
 	
 	if (handle->state==state_playing)
 	{
-		//FIXME
-		retro_run();
+		netplay_run_frame(handle);
 	}
 	
 	if (handle->state==state_aborted)
@@ -514,25 +671,33 @@ void netplay_free(netplay* handle)
 
 void netplay_input_poll(void)
 {
+	if (ghandle->is_replay) return;
 	ghandle->cb->input_poll_cb();
 }
 
 int16_t netplay_input_state(unsigned port, unsigned device, unsigned index, unsigned id)
 {
-	return ghandle->cb->input_state_cb(port, device, index, id);
+	if (device==RETRO_DEVICE_JOYPAD && index==0)
+	{
+		return (ghandle->inputs[port]>>id)&1;
+	}
+	return 0;
 }
 
 void netplay_video_refresh(const void *data, unsigned width, unsigned height, size_t pitch)
 {
+	if (ghandle->is_replay) return;
 	ghandle->cb->video_refresh_cb(data, width, height, pitch);
 }
 
 void netplay_audio_sample(int16_t left, int16_t right)
 {
+	if (ghandle->is_replay) return;
 	ghandle->cb->audio_sample_cb(left, right);
 }
 
 size_t netplay_audio_sample_batch(const int16_t *data, size_t frames)
 {
+	if (ghandle->is_replay) return;
 	return ghandle->cb->audio_sample_batch_cb(data, frames);
 }
