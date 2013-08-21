@@ -297,6 +297,7 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 
 static void netplay_run_init(netplay* handle)
 {
+puts("RINIT");
 	netplay_free_setup(handle);
 	handle->state=state_playing;
 	
@@ -317,6 +318,7 @@ static void netplay_run_init(netplay* handle)
 
 static void netplay_run_packet(netplay* handle, struct pack_gameplay* packet)
 {
+puts("RPCKET");
 	handle->in_packets++;
 	handle->in_frames+=(packet->this_frame - packet->acknowledge_frame);
 	
@@ -362,6 +364,7 @@ static void netplay_run_packet(netplay* handle, struct pack_gameplay* packet)
 
 static void netplay_run_frame(netplay* handle)
 {
+puts("RFRAME");
 	if (handle->speculative_frames%60==0)
 	{
 if(!handle->in_packets) puts("INOUTDIFF=inf");
@@ -399,6 +402,7 @@ else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(h
 	
 	handle->speculative_frames++;
 	
+puts("E");
 	uint16 myinput=0;
 	int i;
 	for (i=0;i<16;i++)//it only goes to 12, but a pile of zeroes is harmless.
@@ -415,7 +419,9 @@ else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(h
 		pack_gameplay_id, handle->signature, handle->speculative_frames, handle->final_frames
 	};
 	//int i;
-	for (i=0;i<handle->final_frames-handle->speculative_frames;i++)
+printf("%u-%u=%u\n",handle->final_frames,handle->speculative_frames,handle->final_frames-handle->speculative_frames);
+//handle->final_frames-handle->speculative_frames
+	for (i=0;i<handle->speculative_frames-handle->final_frames;i++)
 	{
 		packet.data[i]=handle->my_input[(handle->final_frames+i)%128];
 	}
@@ -440,6 +446,7 @@ else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(h
 
 void netplay_run(netplay* handle)
 {
+printf("STATE=%i\n",handle->state);
 	ghandle=handle;
 	while (true)
 	{
@@ -457,6 +464,8 @@ void netplay_run(netplay* handle)
 			//signature will be right since it will be swapped back
 			//it won't pong loop since aborts are not ponged
 		}
+		
+printf("TYPE=%i STATE=%i\n",pack_base->packtype,handle->state);
 		
 		if (pack_base->packtype==pack_setup_id && handle->state==state_s_waitcon)
 		{
@@ -490,7 +499,7 @@ void netplay_run(netplay* handle)
 			handle->state=state_c_getsram;
 			
 			//these were checked on the other end already, but why not
-			if (packet->format_signature!=0x6D6E6952) netplay_abort(handle, abort_not_host);
+			if (packet->format_signature!=WIRESIGNATURE) netplay_abort(handle, abort_not_host);
 			if (packet->format_version!=WIREVERSION) netplay_abort(handle, abort_bad_host);
 			
 			if (handle->setup->corehash!=packet->core_hash) netplay_abort(handle, abort_bad_core);
@@ -506,7 +515,8 @@ void netplay_run(netplay* handle)
 		if (pack_base->packtype==pack_setup_ack_id && handle->state==state_s_sendsetup)
 		{
 			struct pack_setup_ack * packet=(void*)raw_packet;
-			handle->state=state_s_sendsram;
+			if (!handle->setup->sram_size) netplay_run_init(handle);
+			else handle->state=state_s_sendsram;
 			continue;
 		}
 		
@@ -516,8 +526,7 @@ void netplay_run(netplay* handle)
 			
 			if (packet->len>1024 || packet->start*1024+1024 > handle->setup->sram_size)
 			{
-				//it's not even false - if we get this, it's communicating with something that isn't a valid ZMZ
-				netplay_abort(handle, abort_bad_host);
+				netplay_abort(handle, abort_not_host);
 				continue;
 			}
 			
@@ -565,8 +574,7 @@ void netplay_run(netplay* handle)
 			
 			if (packet->len>1024 || packet->start*1024+1024 > handle->setup->sram_size)
 			{
-				//it's not even false - if we get this, it's communicating with something that isn't a valid ZMZ
-				netplay_abort(handle, abort_bad_host);
+				netplay_abort(handle, abort_not_host);
 				continue;
 			}
 			
@@ -597,41 +605,41 @@ void netplay_run(netplay* handle)
 		//if (handle->time_since_last>=120) netplay_abort(handle, abort_ping_timeout);
 		if (handle->time_since_last>=120) exit(1);
 	}
-	if (handle->state==state_s_sendsram)
-	{
-		int byteat=handle->setup->sram_send_at;
-		int lastbyte=handle->setup->sram_ack_size_without_header;
-		while (byteat<lastbyte && handle->setup->sram_sent_noack->ack[byteat]==0xFF) byteat++;
-		if (handle->setup->frames_until_resend) handle->setup->frames_until_resend--;
-		if (byteat==lastbyte)
-		{
-			if (!handle->setup->frames_until_resend)
-			{
-				handle->setup->frames_until_resend=60/5;
-				memcpy(handle->setup->sram_sent_noack, handle->setup->sram_ack, handle->setup->sram_ack_size_with_header);
-				byteat=0;
-			}
-		}
-		handle->setup->sram_send_at=byteat;
-		if (byteat<lastbyte)
-		{
-			int bitat;
-			for (bitat=0;handle->setup->sram_sent_noack->ack[byteat]&(1<<bitat);bitat++) {}
-			handle->setup->sram_sent_noack->ack[byteat]|=(1<<bitat);
-			
-			struct pack_setup_data packet;
-			packet.packtype=pack_setup_data_id;
-			packet.signature=handle->signature;
-			packet.start=byteat*8+bitat;
-			packet.len=handle->setup->sram_size-(packet.start*1024);
-			if (packet.len>1024) packet.len=1024;
-			memcpy(packet.data, handle->setup->sram_ptr+(packet.start*1024), packet.len);
-			memset(packet.data+packet.len, 0, 1024-packet.len);
-			socket_write(&handle->sock, &packet, sizeof(packet));
-		}
-	}
 	if (handle->state!=state_playing && handle->state!=state_aborted)
 	{
+		if (handle->state==state_s_sendsram)
+		{
+			int byteat=handle->setup->sram_send_at;
+			int lastbyte=handle->setup->sram_ack_size_without_header;
+			while (byteat<lastbyte && handle->setup->sram_sent_noack->ack[byteat]==0xFF) byteat++;
+			if (handle->setup->frames_until_resend) handle->setup->frames_until_resend--;
+			if (byteat==lastbyte)
+			{
+				if (!handle->setup->frames_until_resend)
+				{
+					handle->setup->frames_until_resend=60/5;
+					memcpy(handle->setup->sram_sent_noack, handle->setup->sram_ack, handle->setup->sram_ack_size_with_header);
+					byteat=0;
+				}
+			}
+			handle->setup->sram_send_at=byteat;
+			if (byteat<lastbyte)
+			{
+				int bitat;
+				for (bitat=0;handle->setup->sram_sent_noack->ack[byteat]&(1<<bitat);bitat++) {}
+				handle->setup->sram_sent_noack->ack[byteat]|=(1<<bitat);
+				
+				struct pack_setup_data packet;
+				packet.packtype=pack_setup_data_id;
+				packet.signature=handle->signature;
+				packet.start=byteat*8+bitat;
+				packet.len=handle->setup->sram_size-(packet.start*1024);
+				if (packet.len>1024) packet.len=1024;
+				memcpy(packet.data, handle->setup->sram_ptr+(packet.start*1024), packet.len);
+				memset(packet.data+packet.len, 0, 1024-packet.len);
+				socket_write(&handle->sock, &packet, sizeof(packet));
+			}
+		}
 		if (handle->state==state_c_sendsetup || handle->state==state_s_sendsetup)
 		{
 			handle->setup->frames_until_resend--;
