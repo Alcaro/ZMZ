@@ -178,7 +178,7 @@ void retro_run(void)
 	
 	sprintf(state.lines[27], "%i: %.4X %.4X", state.frame, newstate[0], newstate[1]);
 	
-	uint16_t color=~crc32_calc((void*)state.lines, 32*27, ~0U);
+	uint16_t color=(~crc32_calc((void*)state.lines, 32*27, ~0U))&0x3DEF;
 	for (i=0;i<256*224;i++) pixels[0][i]=color;
 	
 	for (i=0;i<28;i++)
