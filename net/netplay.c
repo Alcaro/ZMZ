@@ -246,7 +246,7 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 	{
 		handle->signature =(rand()&255);
 		handle->signature^=(rand()&255)<<8;
-		handle->signature^=(rand()&255)<<16;//rand_max is less than uin32_max on windows, so let's mix in some more shit.
+		handle->signature^=(rand()&255)<<16;//rand_max is less than uint32_max on windows, so let's mix in some more shit.
 		handle->signature^=(rand()&255)<<24;
 	}
 	
@@ -326,7 +326,7 @@ static void netplay_run_packet(netplay* handle, struct pack_gameplay* packet)
 //printf("THIS=%i=%i->%i ",handle->final_frames,handle->send_from_frame,handle->speculative_frames);
 //printf("PID=%i ",handle->myplayerid);
 	handle->in_packets++;
-	handle->in_frames+=(packet->this_frame - packet->acknowledge_frame);
+	handle->in_frames+=(packet->this_frame - packet->start_frame);
 	
 	handle->send_from_frame=max(handle->send_from_frame, packet->acknowledge_frame);
 	
@@ -367,17 +367,20 @@ static void netplay_run_frame(netplay* handle)
 //puts("RFRAME");
 	if (handle->speculative_frames%60==0)
 	{
+printf("INOUT= IN=%i,%i OUT=%i,%i\n",handle->in_packets,handle->in_packets,handle->out_packets,handle->in_packets);
 if(!handle->in_packets) puts("INOUTDIFF=inf");
-else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_frames)) / (handle->in_packets*handle->out_packets/**3/2*/));
-//		if ((handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_frames) > handle->in_packets*handle->out_packets*3/2)
-		if (0)
+else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_packets)) / (handle->in_packets*handle->out_packets/**3/2*/));
+		if ((handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_packets) <- handle->in_packets*handle->out_packets*3/2)
+		//if (0)
 		{
+puts("LAGFRAME");
 			handle->out_packets=0;
 			handle->out_frames=0;
 			handle->in_packets=0;
 			handle->in_frames=0;
 			return;
 		}
+puts("NOTLAGFRAME");
 		
 		handle->out_packets=0;
 		handle->out_frames=0;
@@ -419,7 +422,7 @@ else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(h
 	if (handle->speculative_frames-handle->final_frames >= 64/6)
 	{
 #ifndef DEBUG
-#error no seriously.
+#error no seriously. also delete the /6.
 #endif
 exit(12);
 		netplay_abort(handle, abort_ping_timeout);
@@ -438,7 +441,7 @@ if(packet.data[i]==0xFFFF)exit(19);
 	socket_write(&handle->sock, &packet, sizeof(packet));
 	
 	handle->out_packets++;
-	handle->out_frames+=(packet.this_frame - packet.acknowledge_frame);
+	handle->out_frames+=(packet.this_frame - packet.start_frame);
 	
 	retro_run();
 }

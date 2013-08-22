@@ -2,6 +2,8 @@
 #include <string.h>
 #include <stdio.h>
 
+#include <windows.h>
+
 retro_video_refresh_t video;
 retro_input_state_t input;
 retro_input_poll_t inputpoll;
@@ -187,6 +189,13 @@ void retro_run(void)
 	video(pixels, 256, 224, 512);
 	
 	state.frame++;
+	
+	//ensure reemulating isn't free
+	unsigned long long a;
+	unsigned long long b;
+	GetSystemTimeAsFileTime((FILETIME*)&a);
+	GetSystemTimeAsFileTime((FILETIME*)&b);
+	while (b-a < 5*10000) GetSystemTimeAsFileTime((FILETIME*)&b);
 }
 
 size_t retro_serialize_size(void)
