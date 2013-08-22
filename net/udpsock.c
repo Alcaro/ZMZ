@@ -106,9 +106,8 @@ static void socket_write(struct socket * sock, void * buffer, int buflen)
 #error no seriously.
 #endif
 static int loss=1;
-printf("LOSS=%i\n",loss);
-if (rand()%loss) {puts("LOSS");loss--;return;}
-puts("SENT");loss=3;
+if (rand()%loss) {loss--;return;}
+loss=3;
 	if (sock->connected) sendto(sock->fd, buffer, buflen, 0, sock->addr, sock->addrlen);
 }
 

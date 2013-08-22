@@ -78,8 +78,10 @@ struct pack_gameplay {
 	uint32 packtype;
 	uint32 signature;
 	
-	uint32 this_frame;//how many frames the sender has predictively emulated
 	uint32 acknowledge_frame;//how much the packet sender has received from the other party and conclusively emulated
+	
+	uint32 start_frame;//where the input data starts
+	uint32 this_frame;//how many frames the sender has predictively emulated
 	uint16 data[64];//size is equal to the difference between the above; should remain mostly unused
 	
 	uint32 chat_len;
@@ -279,7 +281,7 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 	handle->setup->coreverhash=crc32(0, info.library_version, strlen(info.library_version));
 	handle->setup->gamehash=CRC32;
 	
-	handle->myplayerid=(!host);
+	handle->myplayerid=((bool)host);
 	handle->cb=cb;
 	strcpy(handle->mynick, mynick);
 	strcpy(handle->othernick, "");
@@ -298,7 +300,6 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 
 static void netplay_run_init(netplay* handle)
 {
-puts("RINIT");
 	netplay_free_setup(handle);
 	handle->state=state_playing;
 	
@@ -315,68 +316,55 @@ puts("RINIT");
 	{
 		handle->savestates[i]=malloc(handle->savestate_size);
 	}
+memset(handle->my_input, 0xFF, sizeof(handle->my_input));
 }
 
 static void netplay_run_packet(netplay* handle, struct pack_gameplay* packet)
 {
-puts("RPCKET");
-printf("GETPACK=%i->%i ",packet->acknowledge_frame,packet->this_frame);
-printf("THIS=%i=%i->%i ",handle->final_frames,handle->send_from_frame,handle->speculative_frames);
+//puts("RPCKET");
+//printf("GETPACK=%i->%i ",packet->acknowledge_frame,packet->this_frame);
+//printf("THIS=%i=%i->%i ",handle->final_frames,handle->send_from_frame,handle->speculative_frames);
+//printf("PID=%i ",handle->myplayerid);
 	handle->in_packets++;
 	handle->in_frames+=(packet->this_frame - packet->acknowledge_frame);
 	
 	handle->send_from_frame=max(handle->send_from_frame, packet->acknowledge_frame);
 	
-	if (packet->acknowledge_frame > handle->final_frames) exit(10);//this shouldn't happen
-	if (packet->this_frame>handle->final_frames)
+	int id=0;
+	int frame;
+	bool must_play=false;
+	for (frame=packet->start_frame;frame<packet->this_frame;frame++)
 	{
-		int id=0;
-		uint32 thisframe;
-		bool must_play=false;
-		for (thisframe=packet->acknowledge_frame;thisframe<packet->this_frame;thisframe++)
+//printf("IN[%i]=%.4X ",frame,packet->data[id]);
+		if (frame==handle->final_frames && frame<handle->speculative_frames)
 		{
-//puts("A");
-#ifndef DEBUG
-#error Allow remote input to arrive at the same time as ours. Should cut one frame of lag.
-#endif
-			if (thisframe >= handle->speculative_frames) break;//if this happens, we're equal or behind
-			//exit(11);//this shouldn't happen
-			if (thisframe==handle->final_frames)
+			if (!must_play && handle->inputs[handle->myplayerid^1]!=packet->data[id])
 			{
-//puts("B");
-				if (!must_play && handle->inputs[handle->myplayerid^1]!=packet->data[id])
-				{
-					retro_unserialize(handle->savestates[handle->final_frames%128], handle->savestate_size);
-					must_play=true;
-				}
-				if (must_play)
-				{
-					handle->inputs[handle->myplayerid^1]=packet->data[id];
-					handle->inputs[handle->myplayerid]=handle->my_input[handle->final_frames%128];
-					handle->is_replay=true;
-					retro_run();
-					handle->is_replay=false;
-				}
-				handle->final_frames++;
+printf("REWIND->%i\n",handle->final_frames);
+				retro_unserialize(handle->savestates[handle->final_frames%128], handle->savestate_size);
+				must_play=true;
 			}
-			id++;
+			if (must_play)
+			{
+				handle->inputs[handle->myplayerid^1]=packet->data[id];
+				handle->inputs[handle->myplayerid]=handle->my_input[handle->final_frames%128];
+				handle->is_replay=true;
+				retro_run();
+				handle->is_replay=false;
+			}
+			handle->final_frames++;
 		}
-		while (thisframe<handle->speculative_frames)
-		{
-			handle->is_replay=true;
-			retro_run();
-			handle->is_replay=false;
-			thisframe++;
-		}
+		id++;
 	}
-printf("NEWTHIS=%i\n",handle->final_frames);
+	for (frame=handle->final_frames;frame<handle->speculative_frames;frame++) retro_run();//resync
 	
 	//TODO: chat messages
+//printf("NEWTHIS=%i\n",handle->final_frames);
 }
 
 static void netplay_run_frame(netplay* handle)
 {
-puts("RFRAME");
+//puts("RFRAME");
 	if (handle->speculative_frames%60==0)
 	{
 if(!handle->in_packets) puts("INOUTDIFF=inf");
@@ -412,8 +400,6 @@ else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(h
 		}
 	}
 	
-	handle->speculative_frames++;
-	
 	uint16 myinput=0;
 	int i;
 	for (i=0;i<16;i++)//it only goes to 12, but a pile of zeroes is harmless.
@@ -426,7 +412,10 @@ else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(h
 	handle->inputs[handle->myplayerid]=handle->my_input[handle->speculative_frames%128];
 	//keep handle->inputs[handle->myplayerid^1] as what it was last time
 	
-printf("%u-%u=%u\n",handle->speculative_frames,handle->final_frames,handle->speculative_frames-handle->final_frames);
+	retro_serialize(handle->savestates[handle->speculative_frames%128], handle->savestate_size);
+	
+	handle->speculative_frames++;
+	
 	if (handle->speculative_frames-handle->final_frames >= 64/6)
 	{
 #ifndef DEBUG
@@ -437,11 +426,12 @@ exit(12);
 		return;//normally we can just continue, but not when we're about to overflow a buffer.
 	}
 	struct pack_gameplay packet={
-		pack_gameplay_id, handle->signature, handle->speculative_frames, handle->final_frames
+		pack_gameplay_id, handle->signature, handle->final_frames, handle->send_from_frame, handle->speculative_frames
 	};
-	for (i=0;i<handle->speculative_frames-handle->final_frames;i++)
+	for (i=0;i<handle->speculative_frames-handle->send_from_frame;i++)
 	{
-		packet.data[i]=handle->my_input[(handle->final_frames+i)%128];
+		packet.data[i]=handle->my_input[(handle->send_from_frame+i)%128];
+if(packet.data[i]==0xFFFF)exit(19);
 	}
 	
 	packet.chat_len=0;
@@ -451,7 +441,6 @@ exit(12);
 	handle->out_frames+=(packet.this_frame - packet.acknowledge_frame);
 	
 	retro_run();
-	retro_serialize(handle->savestates[handle->speculative_frames%128], handle->savestate_size);
 }
 
 //client (P2) sends struct setup every 200ms until it gets one back
@@ -464,7 +453,6 @@ exit(12);
 
 void netplay_run(netplay* handle)
 {
-printf("STATE=%i\n",handle->state);
 	ghandle=handle;
 	while (true)
 	{
@@ -482,8 +470,6 @@ printf("STATE=%i\n",handle->state);
 			//signature will be right since it will be swapped back
 			//it won't pong loop since aborts are not ponged
 		}
-		
-printf("TYPE=%i STATE=%i\n",pack_base->packtype,handle->state);
 		
 		if (pack_base->packtype==pack_setup_id && handle->state==state_s_waitcon)
 		{
