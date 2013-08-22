@@ -14,10 +14,6 @@ typedef int64_t int64;
 
 //standard port ID is 21101
 
-//todo:
-//if sent data in 60 frames is 90 less than what I get, wait for one frame, reset timers
-//if I take >2100ms for 120 frames, add input lag to self
-
 #ifdef __GNUC__
 #pragma GCC diagnostic error "-Wpadded"//putting it here is undefined behaviour in gcc 4.5, but seems to work; putting it earlier throws for padding in libretro.h and I can't change that.
 //#pragma GCC diagnostic push//only exists in gcc 4.6
@@ -356,7 +352,15 @@ printf("REWIND->%i\n",handle->final_frames);
 		}
 		id++;
 	}
-	for (frame=handle->final_frames;frame<handle->speculative_frames;frame++) retro_run();//resync
+	for (frame=handle->final_frames;frame<handle->speculative_frames;frame++)
+	{
+		//resync
+		//can't set other player's input, it's not known
+		handle->inputs[handle->myplayerid]=handle->my_input[handle->final_frames%128];
+		handle->is_replay=true;
+		retro_run();
+		handle->is_replay=false;
+	}
 	
 	//TODO: chat messages
 //printf("NEWTHIS=%i\n",handle->final_frames);
@@ -367,7 +371,7 @@ static void netplay_run_frame(netplay* handle)
 //puts("RFRAME");
 	if (handle->speculative_frames%60==0)
 	{
-printf("INOUT= IN=%i,%i OUT=%i,%i\n",handle->in_packets,handle->in_packets,handle->out_packets,handle->in_packets);
+printf("INOUT= IN=%i,%i OUT=%i,%i\n",handle->in_packets,handle->in_frames,handle->out_packets,handle->out_frames);
 if(!handle->in_packets) puts("INOUTDIFF=inf");
 else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_packets)) / (handle->in_packets*handle->out_packets/**3/2*/));
 		if ((handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_packets) <- handle->in_packets*handle->out_packets*3/2)

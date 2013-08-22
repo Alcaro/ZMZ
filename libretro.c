@@ -1191,11 +1191,8 @@ bool zmz_open_netplay(const char * mynick, const char * host, uint16_t port)
 	retro_set_input_poll(netplay_input_poll);
 	retro_set_input_state(netplay_input_state);
 	
-	if (romloaded)
-	{
-		void powercycle(bool sramload, bool romload);
-		powercycle(false, false);
-	}
+	void powercycle(bool sramload, bool romload);
+	powercycle(false, false);
 }
 
 void zmz_close_netplay()
