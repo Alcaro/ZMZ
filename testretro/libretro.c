@@ -78,7 +78,7 @@ unsigned long crc32_calc (unsigned char *ptr, unsigned cnt, unsigned long crc)
 struct {
 	uint16_t state[2];
 	uint16_t frame;
-	char lines[32][64];
+	char lines[28][32];
 } state;
 
 void retro_set_environment(retro_environment_t cb)
@@ -167,7 +167,7 @@ void retro_run(void)
 	}
 	if (state.state[0]!=newstate[0] || state.state[1]!=newstate[1])
 	{
-		for (i=0;i<31;i++)
+		for (i=0;i<27;i++)
 		{
 			strcpy(state.lines[i], state.lines[i+1]);
 		}
@@ -176,12 +176,12 @@ void retro_run(void)
 		state.state[1]=newstate[1];
 	}
 	
-	sprintf(state.lines[224/8-1], "%i: %.4X %.4X", state.frame, newstate[0], newstate[1]);
+	sprintf(state.lines[27], "%i: %.4X %.4X", state.frame, newstate[0], newstate[1]);
 	
-	uint16_t color=~crc32_calc((void*)state.lines, sizeof(state.lines[0])*(224/8-2), ~0U);
+	uint16_t color=~crc32_calc((void*)state.lines, 32*27, ~0U);
 	for (i=0;i<256*224;i++) pixels[0][i]=color;
 	
-	for (i=0;i<32;i++)
+	for (i=0;i<28;i++)
 	{
 		renderstr(state.lines[i], 0, i*8);
 	}
