@@ -105,7 +105,10 @@ static void socket_write(struct socket * sock, void * buffer, int buflen)
 #ifndef DEBUG
 #error no seriously.
 #endif
-if (rand()&1) return;//50% packet loss omg panic! extreme circumstances are the best for testing that stuff works
+static int loss=1;
+printf("LOSS=%i\n",loss);
+if (rand()%loss) {puts("LOSS");loss--;return;}
+puts("SENT");loss=3;
 	if (sock->connected) sendto(sock->fd, buffer, buflen, 0, sock->addr, sock->addrlen);
 }
 

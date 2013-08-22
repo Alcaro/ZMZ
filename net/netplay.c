@@ -165,6 +165,7 @@ struct netplay {
 	
 	uint32 speculative_frames;
 	uint32 final_frames;
+	
 	uint32 send_from_frame;
 	
 	uint8 my_input_lag;
@@ -319,11 +320,14 @@ puts("RINIT");
 static void netplay_run_packet(netplay* handle, struct pack_gameplay* packet)
 {
 puts("RPCKET");
+printf("GETPACK=%i->%i ",packet->acknowledge_frame,packet->this_frame);
+printf("THIS=%i=%i->%i ",handle->final_frames,handle->send_from_frame,handle->speculative_frames);
 	handle->in_packets++;
 	handle->in_frames+=(packet->this_frame - packet->acknowledge_frame);
 	
 	handle->send_from_frame=max(handle->send_from_frame, packet->acknowledge_frame);
 	
+	if (packet->acknowledge_frame > handle->final_frames) exit(10);//this shouldn't happen
 	if (packet->this_frame>handle->final_frames)
 	{
 		int id=0;
@@ -331,8 +335,15 @@ puts("RPCKET");
 		bool must_play=false;
 		for (thisframe=packet->acknowledge_frame;thisframe<packet->this_frame;thisframe++)
 		{
-			if (thisframe==handle->final_frames+1)
+//puts("A");
+#ifndef DEBUG
+#error Allow remote input to arrive at the same time as ours. Should cut one frame of lag.
+#endif
+			if (thisframe >= handle->speculative_frames) break;//if this happens, we're equal or behind
+			//exit(11);//this shouldn't happen
+			if (thisframe==handle->final_frames)
 			{
+//puts("B");
 				if (!must_play && handle->inputs[handle->myplayerid^1]!=packet->data[id])
 				{
 					retro_unserialize(handle->savestates[handle->final_frames%128], handle->savestate_size);
@@ -358,6 +369,7 @@ puts("RPCKET");
 			thisframe++;
 		}
 	}
+printf("NEWTHIS=%i\n",handle->final_frames);
 	
 	//TODO: chat messages
 }
@@ -391,7 +403,7 @@ else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(h
 #ifdef _WIN32
 		GetSystemTimeAsFileTime((FILETIME*)&handle->fpscheck);
 		printf("TIMER=%u\n",handle->fpscheck - oldfpscheck);
-		if (0)
+		if (handle->fpscheck - oldfpscheck > 2100*10000)
 #else
 #error what
 #endif
@@ -402,7 +414,6 @@ else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(h
 	
 	handle->speculative_frames++;
 	
-puts("E");
 	uint16 myinput=0;
 	int i;
 	for (i=0;i<16;i++)//it only goes to 12, but a pile of zeroes is harmless.
@@ -415,12 +426,19 @@ puts("E");
 	handle->inputs[handle->myplayerid]=handle->my_input[handle->speculative_frames%128];
 	//keep handle->inputs[handle->myplayerid^1] as what it was last time
 	
+printf("%u-%u=%u\n",handle->speculative_frames,handle->final_frames,handle->speculative_frames-handle->final_frames);
+	if (handle->speculative_frames-handle->final_frames >= 64/6)
+	{
+#ifndef DEBUG
+#error no seriously.
+#endif
+exit(12);
+		netplay_abort(handle, abort_ping_timeout);
+		return;//normally we can just continue, but not when we're about to overflow a buffer.
+	}
 	struct pack_gameplay packet={
 		pack_gameplay_id, handle->signature, handle->speculative_frames, handle->final_frames
 	};
-	//int i;
-printf("%u-%u=%u\n",handle->final_frames,handle->speculative_frames,handle->final_frames-handle->speculative_frames);
-//handle->final_frames-handle->speculative_frames
 	for (i=0;i<handle->speculative_frames-handle->final_frames;i++)
 	{
 		packet.data[i]=handle->my_input[(handle->final_frames+i)%128];
@@ -599,11 +617,7 @@ printf("TYPE=%i STATE=%i\n",pack_base->packtype,handle->state);
 	if (handle->state!=state_s_waitcon && handle->state!=state_aborted)
 	{
 		handle->time_since_last++;
-#ifndef DEBUG
-#error no seriously.
-#endif
-		//if (handle->time_since_last>=120) netplay_abort(handle, abort_ping_timeout);
-		if (handle->time_since_last>=120) exit(1);
+		if (handle->time_since_last>=120) netplay_abort(handle, abort_ping_timeout);
 	}
 	if (handle->state!=state_playing && handle->state!=state_aborted)
 	{
@@ -709,3 +723,7 @@ size_t netplay_audio_sample_batch(const int16_t *data, size_t frames)
 	if (ghandle->is_replay) return;
 	return ghandle->cb->audio_sample_batch_cb(data, frames);
 }
+
+#ifndef DEBUG
+#error no seriously go fix guiwindp.inc line 3473.
+#endif

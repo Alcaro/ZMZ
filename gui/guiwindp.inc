@@ -3470,7 +3470,8 @@ GUINetOptnsTextD db 'CLIENT OPTIONS:',0
 GUINetOptnsTextE db 'IP:',0
 GUINetOptnsTextF db 'CONNECT TO SERVER',0
 NEWSYM GUINetChatNick, times 16 db 0
-NEWSYM GUINetHostIp, times 29 db 0
+NEWSYM GUINetHostIp, db 'localhost'
+times 29 db 0
 GUINetOptnsTextG db 'YOUR IP: '
 NEWSYM GUINetMyIp, times 29 db 0
 NEWSYM GUINetPort, db '21101',0,0,0

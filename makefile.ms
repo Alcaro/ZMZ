@@ -211,7 +211,7 @@ ifneq (${DEBUGGER},no)
   endif
 endif
 
-NETOBJ=${NETDIR}/netplay.o
+NETOBJ=${NETDIR}/netplay${OE}
 #${NETDIR}/ztcp${OE}
 
 VIDEOBJ=${VIDEODIR}/makev16b${OE} ${VIDEODIR}/makev16t${OE} ${VIDEODIR}/makevid${OE}\
@@ -426,7 +426,7 @@ ${JMADIR}/zsnesjma${OE}: ${JMADIR}/zsnesjma.cpp ${JMADIR}/jma.h \
 ${MMLIBDIR}/mm${OE}: ${MMLIBDIR}/mm.c ${MMLIBDIR}/mm.h
 ${MMLIBDIR}/windows${OE}: ${MMLIBDIR}/windows.c ${MMLIBDIR}/mm.h
 
-${NETDIR}/netplay${OE}: ${NETDIR}/netplay.c ${NETDIR}/netplay.h
+${NETDIR}/netplay${OE}: ${NETDIR}/netplay.c ${NETDIR}/udpsock.c ${NETDIR}/netplay.h
 
 ${VIDEODIR}/2xsaiw${OE}: ${VIDEODIR}/2xsaiw.asm macros.mac
 ${VIDEODIR}/hq2x16${OE}: ${VIDEODIR}/hq2x16.asm macros.mac
