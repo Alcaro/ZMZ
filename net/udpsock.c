@@ -10,6 +10,13 @@ struct socket {
 	int addrlen;
 };
 
+static bool socket_new(struct socket * sock, const char * host, unsigned short port);
+static int socket_read(struct socket * sock, void * buffer, int buflen);
+static void socket_write(struct socket * sock, void * buffer, int buflen);
+static void socket_close(struct socket * sock);
+static const char * socket_sockaddr_to_str(struct sockaddr * addr, int addrlen);
+static const char * socket_other_end(struct socket * sock);
+
 static bool socket_new(struct socket * sock, const char * host, unsigned short port)
 {
 #ifdef _WIN32
@@ -42,6 +49,11 @@ static bool socket_new(struct socket * sock, const char * host, unsigned short p
 	
 	addrwalk=addr;
 	
+#ifndef DEBUG
+#error no seriously.
+#endif
+printf("Connecting to %s, family %i\n", socket_sockaddr_to_str(addrwalk->ai_addr, addrwalk->ai_addrlen), addrwalk->ai_family);
+	
 	do {
 		sock->fd=socket(addrwalk->ai_family, addrwalk->ai_socktype, addrwalk->ai_protocol);
 		if (sock->fd<0)
@@ -52,6 +64,7 @@ static bool socket_new(struct socket * sock, const char * host, unsigned short p
 		close(sock->fd);
 	} while((addrwalk=addrwalk->ai_next) != NULL);
 	
+	//we want packet loss, not blocking; we handle loss much better than blocks
 #ifdef _WIN32
 	u_long iMode=1;
 	ioctlsocket(sock->fd, FIONBIO, &iMode); 
@@ -120,15 +133,14 @@ static void socket_close(struct socket * sock)
 	sock->fd=-1;
 }
 
-static const char * socket_other_end(struct socket * sock)
+static const char * socket_sockaddr_to_str(struct sockaddr * addr, int addrlen)
 {
-	if (!sock->connected) return NULL;
 	static int addrstrlen=16;
 	static char * addrstr=NULL;
 	if (!addrstr) addrstr=malloc(addrstrlen);
 	
 retry: ;
-	int err=getnameinfo(sock->addr, sock->addrlen, addrstr, addrstrlen, NULL, 0, NI_NUMERICHOST);
+	int err=getnameinfo(addr, addrlen, addrstr, addrstrlen, NULL, 0, NI_NUMERICHOST);
 	if (!err) return addrstr;
 	if (err==WSAEFAULT)
 	{
@@ -137,16 +149,10 @@ retry: ;
 		goto retry;
 	}
 	return NULL;
-	
-	////wtf, inet_ntop doesn't exist on xp?
-	//if (inet_ntop(sock->addr->sa_family, sock->addr, addrstr, addrstrlen)==0/*wtf, this one is documented to return pointer, why doesn't it*/)
-	//{
-	//	if (WSAGetLastError()==ERROR_INVALID_PARAMETER && addrstrlen<1024)
-	//	{
-	//		addrstrlen*=2;
-	//		addrstr=realloc(addrstr, addrstrlen);
-	//		goto retry;
-	//	}
-	//	return NULL;
-	//}
+}
+
+static const char * socket_other_end(struct socket * sock)
+{
+	if (!sock->connected) return NULL;
+	return socket_sockaddr_to_str(sock->addr, sock->addrlen);
 }

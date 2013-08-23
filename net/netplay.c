@@ -95,23 +95,27 @@ struct pack_abort {
 
 const char * abortreasons[]={
 	//these aren't really in any valid order.
-#define abort_bad_core 0
-	"Libretro core mismatch",
-#define abort_bad_core_ver 1
-	"Libretro core version mismatch",
-#define abort_bad_game 2
-	"Game mismatch",//used for SRAM size mismatch too since, well, it is wrong game.
-#define abort_sore_loser 3
-	"User request",
-#define abort_ping_timeout 4
-	"Connection lost",
-#define abort_bad_host 5
+#define abort_no_host_ip 0
+	"Invalid IP address",
+#define abort_no_host 1
+	"No server on this IP",
+#define abort_not_host 2
+	"Server is not ZMZ",
+#define abort_bad_host 3
 	"ZMZ version mismatch",
-#define abort_bad_endian 6
+#define abort_bad_core 4
+	"Libretro core mismatch",
+#define abort_bad_core_ver 5
+	"Libretro core version mismatch",
+#define abort_bad_game 6
+	"Game mismatch",//used for SRAM size mismatch too since, well, it is wrong game.
+#define abort_sore_loser 7
+	"User request",
+#define abort_ping_timeout 8
+	"Connection lost",
+#define abort_bad_endian 9
 	"Endianness mismatch",//ZMZ only runs on Windows, which is only little endian (http://support.microsoft.com/kb/102025), so this won't happen, but better unused features than lacking an used one
-#define abort_not_host 7
-	"Other end is not ZMZ",
-#define abort_count 8
+#define abort_count 10
 };
 
 #ifdef __GNUC__
@@ -191,6 +195,8 @@ extern unsigned int CRC32;
 
 #include <zlib.h>
 
+void zmz_show_message(const char * msg);
+
 static void netplay_free_setup(netplay* handle)
 {
 	if (handle->setup)
@@ -204,12 +210,6 @@ static void netplay_free_setup(netplay* handle)
 
 static void netplay_abort(netplay* handle, int why)
 {
-#ifndef DEBUG
-#error no seriously.
-#endif
-char
-*e=0;
-*e=0;
 	if (handle->state==state_aborted) return;
 	handle->state=state_aborted;
 	handle->myplayerid=why;
@@ -221,7 +221,7 @@ char
 		free(handle->savestates[i]);
 	}
 	
-	//TODO: print message
+	zmz_show_message(abortreasons[why]);
 }
 
 netplay* netplay_create(const char * mynick, const char * host, unsigned short port, struct retro_callbacks * cb)
@@ -231,6 +231,7 @@ netplay* netplay_create(const char * mynick, const char * host, unsigned short p
 	
 	if (!socket_new(&handle->sock, host, port))
 	{
+		zmz_show_message(abortreasons[abort_no_host_ip]);
 		free(handle);
 		return NULL;
 	}
@@ -374,7 +375,7 @@ puts("RESYNC");
 
 static void netplay_run_frame(netplay* handle)
 {
-if (handle->speculative_frames!=retro_get_memory_size(0x5A4D5A)) printf("%i!=%i\n",handle->speculative_frames,retro_get_memory_size(0x5A4D5A)),exit(13);
+//if (handle->speculative_frames!=retro_get_memory_size(0x5A4D5A)) printf("%i!=%i\n",handle->speculative_frames,retro_get_memory_size(0x5A4D5A)),exit(13);
 #ifndef DEBUG
 #error no seriously.
 #endif
@@ -580,7 +581,8 @@ void netplay_run(netplay* handle)
 		if (pack_base->packtype==pack_abort_id)
 		{
 			struct pack_abort * packet=(void*)raw_packet;
-			netplay_abort(handle, packet->why);
+			if (packet->why>=abort_count) netplay_abort(handle, abort_not_host);
+			else netplay_abort(handle, packet->why);
 		}
 		if (handle->state==state_aborted && pack_base->packtype!=pack_abort_id && pack_base->packtype!=(pack_abort_id<<24))
 		{
@@ -620,7 +622,11 @@ void netplay_run(netplay* handle)
 	if (handle->state!=state_s_waitcon && handle->state!=state_aborted)
 	{
 		handle->time_since_last++;
-		if (handle->time_since_last>=120) netplay_abort(handle, abort_ping_timeout);
+		if (handle->time_since_last>=120)
+		{
+			if (handle->state!=state_c_sendsetup) netplay_abort(handle, abort_no_host);
+			else netplay_abort(handle, abort_ping_timeout);
+		}
 	}
 	if (handle->state!=state_playing && handle->state!=state_aborted)
 	{
