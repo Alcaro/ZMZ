@@ -345,6 +345,7 @@ printf("REWIND->%i\n",handle->final_frames);
 				handle->inputs[handle->myplayerid^1]=packet->data[id];
 				handle->inputs[handle->myplayerid]=handle->my_input[handle->final_frames%128];
 				handle->is_replay=true;
+puts("TRUEPLAY");
 				retro_run();
 				handle->is_replay=false;
 			}
@@ -352,14 +353,19 @@ printf("REWIND->%i\n",handle->final_frames);
 		}
 		id++;
 	}
-	for (frame=handle->final_frames;frame<handle->speculative_frames;frame++)
+	if (must_play)
 	{
-		//resync
-		//can't set other player's input, it's not known
-		handle->inputs[handle->myplayerid]=handle->my_input[handle->final_frames%128];
-		handle->is_replay=true;
-		retro_run();
-		handle->is_replay=false;
+		for (frame=handle->final_frames;frame<handle->speculative_frames;frame++)
+		{
+			//rerun this
+			handle->inputs[handle->myplayerid]=handle->my_input[frame%128];
+			//can't set handle->inputs[handle->myplayerid^1], it's not known
+			retro_serialize(handle->savestates[frame%128], handle->savestate_size);
+			handle->is_replay=true;
+			retro_run();
+puts("RESYNC");
+			handle->is_replay=false;
+		}
 	}
 	
 	//TODO: chat messages
@@ -368,6 +374,10 @@ printf("REWIND->%i\n",handle->final_frames);
 
 static void netplay_run_frame(netplay* handle)
 {
+if (handle->speculative_frames!=retro_get_memory_size(0x5A4D5A)) printf("%i!=%i\n",handle->speculative_frames,retro_get_memory_size(0x5A4D5A)),exit(13);
+#ifndef DEBUG
+#error no seriously.
+#endif
 //puts("RFRAME");
 	if (handle->speculative_frames%60==0)
 	{
@@ -425,8 +435,9 @@ puts("NOTLAGFRAME");
 	
 	if (handle->speculative_frames-handle->final_frames >= 64/6)
 	{
+printf("%i-%i=%i,DIE\n",handle->speculative_frames,handle->final_frames,handle->speculative_frames-handle->final_frames);
 #ifndef DEBUG
-#error no seriously. also delete the /6.
+#error no seriously. also kill that division.
 #endif
 exit(12);
 		netplay_abort(handle, abort_ping_timeout);
@@ -438,7 +449,6 @@ exit(12);
 	for (i=0;i<handle->speculative_frames-handle->send_from_frame;i++)
 	{
 		packet.data[i]=handle->my_input[(handle->send_from_frame+i)%128];
-if(packet.data[i]==0xFFFF)exit(19);
 	}
 	
 	packet.chat_len=0;

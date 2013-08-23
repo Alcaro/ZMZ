@@ -195,7 +195,7 @@ void retro_run(void)
 	unsigned long long b;
 	GetSystemTimeAsFileTime((FILETIME*)&a);
 	GetSystemTimeAsFileTime((FILETIME*)&b);
-	while (b-a < 5*10000) GetSystemTimeAsFileTime((FILETIME*)&b);
+	while (b-a < 10*10000) GetSystemTimeAsFileTime((FILETIME*)&b);
 }
 
 size_t retro_serialize_size(void)
@@ -229,4 +229,8 @@ void retro_unload_game(void) {}
 unsigned retro_get_region(void) { return RETRO_REGION_NTSC; }
 
 void *retro_get_memory_data(unsigned id) { return NULL; }
-size_t retro_get_memory_size(unsigned id) { return 0; }
+size_t retro_get_memory_size(unsigned id)
+{
+	if (id==0x5A4D5A) return state.frame;//most obvious way to extract this... okay I could mess with the states, but this seems easier.
+	return 0;
+}
