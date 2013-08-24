@@ -17,8 +17,15 @@ static void socket_close(struct socket * sock);
 static const char * socket_sockaddr_to_str(struct sockaddr * addr, int addrlen);
 static const char * socket_other_end(struct socket * sock);
 
+#ifdef DEBUG
+static FILE * netdump;
+#endif
+
 static bool socket_new(struct socket * sock, const char * host, unsigned short port)
 {
+netdump=fopen("netdump.txt", "wt");
+fprintf(netdump,"open %s\n",host?host:"null");
+fflush(netdump);
 #ifdef _WIN32
 	static bool inited=false;
 	if (!inited)
@@ -59,21 +66,33 @@ printf("Connecting to %s, family %i\n", socket_sockaddr_to_str(addrwalk->ai_addr
 		if (sock->fd<0)
 			continue;
 		
-		if (host || (bind(sock->fd, addrwalk->ai_addr, addrwalk->ai_addrlen)==0)) break;
+		if (host) break;
 		
+		if (!host)
+		{
+			if (bind(sock->fd, addrwalk->ai_addr, addrwalk->ai_addrlen)!=0) goto fail;
+			
+		}
+		
+	fail:
 		close(sock->fd);
 	} while((addrwalk=addrwalk->ai_next) != NULL);
 	
 	//we want packet loss, not blocking; we handle loss much better than blocks
 #ifdef _WIN32
 	u_long iMode=1;
-	ioctlsocket(sock->fd, FIONBIO, &iMode); 
+	ioctlsocket(sock->fd, FIONBIO, &iMode);
 #endif
 #ifndef _WIN32
 	fcntl(core->fd, F_SETFL, fcntl(core->fd, F_GETFL, 0)|O_NONBLOCK);
 #endif
 	
 	if (sock->fd<0) goto err;
+	
+	//bah, I want it protocol agnostic. windows, cooperate
+	//it can fail, for example on v4 sockets, but 
+	int zero=0;
+	setsockopt(sock->fd, IPPROTO_IPV6, 27/*IPV6_V6ONLY*/, (char*)&zero, sizeof(zero));
 	
 	sock->connected=(host);
 	
@@ -101,6 +120,11 @@ static int socket_read(struct socket * sock, void * buffer, int buflen)
 			ret=recvfrom(sock->fd, buffer, buflen, 0, (struct sockaddr*)addrcopy, &sock->addrlen);
 		} while (ret>0 && !!memcmp(sock->addr, addrcopy, sock->addrlen));
 		if (ret<=0) ret=0;
+if(ret){
+fprintf(netdump,"--> ");
+int i;for(i=0;i<ret;i++)fprintf(netdump,"%.2X",((unsigned char*)buffer)[i]);
+fprintf(netdump,"\n");
+fflush(netdump);}
 		return ret;
 	}
 	else
@@ -109,18 +133,28 @@ static int socket_read(struct socket * sock, void * buffer, int buflen)
 		int ret=recvfrom(sock->fd, buffer, buflen, 0, sock->addr, &sock->addrlen);
 		if (ret<=0) ret=0;
 		else sock->connected=true;
+if(ret){
+fprintf(netdump,"--> ");
+int i;for(i=0;i<ret;i++)fprintf(netdump,"%.2X",((unsigned char*)buffer)[i]);
+fprintf(netdump,"\n");
+fflush(netdump);}
 		return ret;
 	}
 }
 
 static void socket_write(struct socket * sock, void * buffer, int buflen)
 {
-#ifndef DEBUG
-#error no seriously.
-#endif
-static int loss=1;
-if (rand()%loss) {loss--;return;}
-loss=3;
+if(sock->connected){
+fprintf(netdump,"<-- ");
+int i;for(i=0;i<buflen;i++)fprintf(netdump,"%.2X",((unsigned char*)buffer)[i]);
+fprintf(netdump,"\n");
+fflush(netdump);}
+//#ifndef DEBUG
+//#error no seriously.
+//#endif
+//static int loss=1;
+//if (rand()%loss) {loss--;return;}
+//loss=3;
 	if (sock->connected) sendto(sock->fd, buffer, buflen, 0, sock->addr, sock->addrlen);
 }
 

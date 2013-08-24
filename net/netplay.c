@@ -102,23 +102,27 @@ const char * abortreasons[]={
 #define abort_no_host 1
 	"No host on this IP",
 #define abort_not_host 2
-	"Host is not ZMZ",
+	"Other end is not ZMZ",
 #define abort_bad_host 3
+	"Other end sent invalid data",
+#define abort_old_host 4
 	"ZMZ version mismatch",
-#define abort_bad_core 4
+#define abort_bad_core 5
 	"Libretro core mismatch",
-#define abort_bad_core_ver 5
+#define abort_bad_core_ver 6
 	"Libretro core version mismatch",
-#define abort_bad_game 6
+#define abort_bad_game 7
 	"Game mismatch",//used for SRAM size mismatch too since, well, it is wrong game.
-#define abort_sore_loser 7
+#define abort_sore_loser 8
 	"User request",
-#define abort_ping_timeout 8
+#define abort_ping_timeout 9
 	"Connection lost",
-#define abort_bad_endian 9
+#define abort_bad_endian 10
 	"Endianness mismatch",
-#define abort_count 10
+#define abort_count 11
 };
+
+extern char TEST[sizeof(abortreasons)/sizeof(*abortreasons)==abort_count?1:-1];
 
 #ifdef __GNUC__
 #pragma GCC diagnostic ignored "-Wpadded"
@@ -464,7 +468,7 @@ printf("%i-%i=%i,DIE\n",handle->speculative_frames,handle->final_frames,handle->
 #ifndef DEBUG
 #error no seriously.
 #endif
-exit(12);
+//exit(12);
 		netplay_abort(handle, abort_ping_timeout);
 		return;//normally we can just continue, but not when we're about to overflow a buffer.
 	}
@@ -518,15 +522,17 @@ void netplay_run(netplay* handle)
 			handle->state=state_s_sendsetup;
 			handle->setup->frames_until_resend=1;
 			
-			if (packet->format_signature!=WIRESIGNATURE) netplay_abort(handle, abort_not_host);
-			if (packet->format_version!=WIREVERSION) netplay_abort(handle, abort_bad_host);
-			
-			int i; for (i=0;i<64;i++) handle->othernick[i]=packet->nick[i];
+			if (packet->format_signature!=WIRESIGNATURE) { printf("ERROR %.8X!=%.8X\n", WIRESIGNATURE, packet->format_signature); netplay_abort(handle, abort_not_host); }
+			//if (packet->format_signature!=WIRESIGNATURE) netplay_abort(handle, abort_not_host);
+			if (packet->format_version!=WIREVERSION) netplay_abort(handle, abort_old_host);
 			
 			if (handle->setup->corehash!=packet->core_hash) netplay_abort(handle, abort_bad_core);
 			if (handle->setup->coreverhash!=packet->core_version_hash) netplay_abort(handle, abort_bad_core_ver);
 			if (handle->setup->gamehash!=packet->game_hash) netplay_abort(handle, abort_bad_game);
 			if (handle->setup->sram_size!=packet->sram_size) netplay_abort(handle, abort_bad_game);
+			
+			int i; for (i=0;i<64;i++) handle->othernick[i]=packet->nick[i];
+			
 			continue;
 		}
 		
@@ -542,8 +548,9 @@ void netplay_run(netplay* handle)
 			handle->state=state_c_getsram;
 			
 			//these were checked on the other end already, but why not
-			if (packet->format_signature!=WIRESIGNATURE) netplay_abort(handle, abort_not_host);
-			if (packet->format_version!=WIREVERSION) netplay_abort(handle, abort_bad_host);
+			if (packet->format_signature!=WIRESIGNATURE) { printf("ERROR %.8X!=%.8X\n", WIRESIGNATURE, packet->format_signature); netplay_abort(handle, abort_not_host); }
+			//if (packet->format_signature!=WIRESIGNATURE) netplay_abort(handle, abort_not_host);
+			if (packet->format_version!=WIREVERSION) netplay_abort(handle, abort_old_host);
 			
 			if (handle->setup->corehash!=packet->core_hash) netplay_abort(handle, abort_bad_core);
 			if (handle->setup->coreverhash!=packet->core_version_hash) netplay_abort(handle, abort_bad_core_ver);
@@ -569,7 +576,7 @@ void netplay_run(netplay* handle)
 			
 			if (packet->len>1024 || packet->start*1024+1024 > handle->setup->sram_size)
 			{
-				netplay_abort(handle, abort_not_host);
+				netplay_abort(handle, abort_bad_host);
 				continue;
 			}
 			
@@ -613,7 +620,7 @@ void netplay_run(netplay* handle)
 		if (pack_base->packtype==pack_abort_id)
 		{
 			struct pack_abort * packet=(void*)raw_packet;
-			if (packet->why>=abort_count) netplay_abort(handle, abort_not_host);
+			if (packet->why>=abort_count) netplay_abort(handle, abort_bad_host);
 			else netplay_abort(handle, packet->why);
 		}
 		if (handle->state==state_aborted && pack_base->packtype!=pack_abort_id && pack_base->packtype!=(pack_abort_id<<24))
@@ -628,7 +635,7 @@ void netplay_run(netplay* handle)
 		handle->time_since_last++;
 		if (handle->time_since_last>=120)
 		{
-			if (handle->state!=state_c_sendsetup) netplay_abort(handle, abort_no_host);
+			if (handle->state==state_c_sendsetup) netplay_abort(handle, abort_no_host);
 			else netplay_abort(handle, abort_ping_timeout);
 		}
 	}
@@ -707,12 +714,15 @@ void netplay_free(netplay* handle)
 
 void netplay_input_poll(void)
 {
+	if (!ghandle || ghandle->state==state_aborted) { ghandle->cb->input_poll_cb(); return; }
 	if (ghandle->is_replay) return;
 	ghandle->cb->input_poll_cb();
 }
 
 int16_t netplay_input_state(unsigned port, unsigned device, unsigned index, unsigned id)
 {
+	if (!ghandle || ghandle->state==state_aborted) return ghandle->cb->input_state_cb(port, device, index, id);
+	
 	if (device==RETRO_DEVICE_JOYPAD && index==0)
 	{
 		return (ghandle->inputs[port]>>id)&1;
@@ -722,22 +732,22 @@ int16_t netplay_input_state(unsigned port, unsigned device, unsigned index, unsi
 
 void netplay_video_refresh(const void *data, unsigned width, unsigned height, size_t pitch)
 {
+	if (!ghandle || ghandle->state==state_aborted) { ghandle->cb->video_refresh_cb(data, width, height, pitch); return; }
 	if (ghandle->is_replay) return;
 	ghandle->cb->video_refresh_cb(data, width, height, pitch);
 }
 
 void netplay_audio_sample(int16_t left, int16_t right)
 {
+	if (!ghandle || ghandle->state==state_aborted) { ghandle->cb->audio_sample_cb(left, right); return; }
 	if (ghandle->is_replay) return;
 	ghandle->cb->audio_sample_cb(left, right);
 }
 
 size_t netplay_audio_sample_batch(const int16_t *data, size_t frames)
 {
+	if (!ghandle || ghandle->state==state_aborted) return ghandle->cb->audio_sample_batch_cb(data, frames);
 	if (ghandle->is_replay) return;
 	return ghandle->cb->audio_sample_batch_cb(data, frames);
 }
 
-#ifndef DEBUG
-#error no seriously go fix guiwindp.inc line 3473.
-#endif
