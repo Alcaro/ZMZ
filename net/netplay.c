@@ -75,9 +75,11 @@ struct pack_gameplay {
 	uint32 signature;
 	
 	uint32 acknowledge_frame;//how much the packet sender has received from the other party and conclusively emulated
-	
 	uint32 start_frame;//where the input data starts
-	uint32 this_frame;//how many frames the sender has predictively emulated
+	uint32 this_frame;//how many frames the sender has predictively emulated; where the data ends
+	
+	uint32 lagtest;//set to whatever is the highest this_frame we've gotten
+	
 	uint16 data[64];//size is equal to the difference between the above; should remain mostly unused
 	
 	uint32 chat_len;
@@ -98,9 +100,9 @@ const char * abortreasons[]={
 #define abort_no_host_ip 0
 	"Invalid IP address",
 #define abort_no_host 1
-	"No server on this IP",
+	"No host on this IP",
 #define abort_not_host 2
-	"Server is not ZMZ",
+	"Host is not ZMZ",
 #define abort_bad_host 3
 	"ZMZ version mismatch",
 #define abort_bad_core 4
@@ -114,7 +116,7 @@ const char * abortreasons[]={
 #define abort_ping_timeout 8
 	"Connection lost",
 #define abort_bad_endian 9
-	"Endianness mismatch",//ZMZ only runs on Windows, which is only little endian (http://support.microsoft.com/kb/102025), so this won't happen, but better unused features than lacking an used one
+	"Endianness mismatch",
 #define abort_count 10
 };
 
@@ -134,7 +136,7 @@ struct netplay_setup {
 	struct pack_setup_ack * sram_ack;
 	//these are used only by server
 	uint32 sram_send_at;
-	struct pack_setup_ack * sram_sent_noack;//this one contains an unused header; harmless to keep
+	struct pack_setup_ack * sram_sent_noack;//this could be made into an uint8*, but what's the point
 	
 	uint32 corehash;
 	uint32 coreverhash;
@@ -170,7 +172,11 @@ struct netplay {
 	
 	uint32 send_from_frame;
 	
+	uint32 lagtest;
+	uint8 time_to_next_lag;
+	
 	uint8 my_input_lag;
+	uint8 decrease_input_lag_timer;
 	
 	void * savestates[128];
 	uint16 my_input[128];
@@ -179,14 +185,6 @@ struct netplay {
 	
 	bool is_replay;
 	uint16 inputs[2];
-	
-	//reset when !speculative_frames%60
-	int out_packets; int out_frames;
-	int in_packets; int in_frames;
-	//if (in_frames/in_packets)-(out_frames/out_packets)>1.5 then we're too much in front, skip frame
-	
-	//checked and reset when !speculative_frames%120
-	uint64 fpscheck;
 };
 
 static netplay* ghandle=NULL;
@@ -300,12 +298,6 @@ static void netplay_run_init(netplay* handle)
 	netplay_free_setup(handle);
 	handle->state=state_playing;
 	
-#ifdef _WIN32
-	GetSystemTimeAsFileTime((FILETIME*)&handle->fpscheck);
-#else
-#error what
-#endif
-	
 	handle->savestate_size=retro_serialize_size();
 	
 	int i;
@@ -318,14 +310,66 @@ memset(handle->my_input, 0xFF, sizeof(handle->my_input));
 
 static void netplay_run_packet(netplay* handle, struct pack_gameplay* packet)
 {
-//puts("RPCKET");
-//printf("GETPACK=%i->%i ",packet->acknowledge_frame,packet->this_frame);
-//printf("THIS=%i=%i->%i ",handle->final_frames,handle->send_from_frame,handle->speculative_frames);
-//printf("PID=%i ",handle->myplayerid);
-	handle->in_packets++;
-	handle->in_frames+=(packet->this_frame - packet->start_frame);
+	uint64 lagcheck1;
+	uint64 lagcheck2;
+	int lagus;
+#ifdef _WIN32
+	GetSystemTimeAsFileTime((FILETIME*)&lagcheck1);
+#else
+#error what
+#endif
 	
 	handle->send_from_frame=max(handle->send_from_frame, packet->acknowledge_frame);
+	handle->lagtest=max(handle->lagtest, packet->this_frame);
+	
+	//packet->lagtest
+	//(diff)
+	//handle->lagtest
+	//(diff)
+	//handle->speculative_frames
+	
+	int num1=packet->lagtest;
+	int num2=handle->lagtest;
+	int num3=handle->speculative_frames;
+	
+	int diff1=num2-num1;
+	int diff2=num3-num2;
+	
+	int diffdiff=diff2-diff1;
+printf("LAG=%0i,%04i,%04i %i,%i %i\n",num1,num2,num3,diff1,diff2,diffdiff);
+	
+	if (handle->time_to_next_lag==0 && diffdiff>=3)
+	{
+puts("NEEDLAG");
+		handle->time_to_next_lag=5;
+	}
+	
+#ifndef DEBUG
+#error fix this one.
+#endif
+//	if (handle->speculative_frames%120==0)
+//	{
+//		uint64 oldfpscheck=handle->fpscheck;
+//		
+//#ifdef _WIN32
+//		GetSystemTimeAsFileTime((FILETIME*)&handle->fpscheck);
+//		printf("TIMER=%u\n",handle->fpscheck - oldfpscheck);
+//		if (handle->fpscheck - oldfpscheck > 2100*10000)
+//#else
+//#error what
+//#endif
+//		{
+//			if (handle->my_input_lag<60/10*2) handle->my_input_lag++;//I doubt lag above 200ms is playable.
+//		}
+//	}
+	
+//printf("LAG=%04i,%04i,%04i ",handle->speculative_frames,handle->lagtest,packet->lagtest);
+//printf("%i,%i ",(handle->lagtest - handle->speculative_frames),(packet->lagtest - handle->lagtest));
+//printf("%i\n",(handle->lagtest - handle->speculative_frames) - (packet->lagtest - handle->lagtest));
+//#ifndef DEBUG
+//#error no seriously this one is backwards.
+//#endif
+//	if ((handle->lagtest - handle->speculative_frames) - (packet->lagtest - handle->lagtest)>=3)
 	
 	int id=0;
 	int frame;
@@ -360,7 +404,7 @@ puts("TRUEPLAY");
 		{
 			//rerun this
 			handle->inputs[handle->myplayerid]=handle->my_input[frame%128];
-			//can't set handle->inputs[handle->myplayerid^1], it's not known
+			//can't set handle->inputs[handle->myplayerid^1], it's not known. if it was, we wouldn't even need this
 			retro_serialize(handle->savestates[frame%128], handle->savestate_size);
 			handle->is_replay=true;
 			retro_run();
@@ -370,52 +414,32 @@ puts("RESYNC");
 	}
 	
 	//TODO: chat messages
-//printf("NEWTHIS=%i\n",handle->final_frames);
+	
+#ifdef _WIN32
+	GetSystemTimeAsFileTime((FILETIME*)&lagcheck2);
+	lagus=(lagcheck2-lagcheck1)/10;
+#else
+#error what
+#endif
+	
+	if (lagus<16000) handle->decrease_input_lag_timer++;
+	else handle->decrease_input_lag_timer=0;
+	
+	if (handle->decrease_input_lag_timer>240 && handle->my_input_lag)
+	{
+		handle->my_input_lag--;
+		handle->decrease_input_lag_timer=0;
+	}
+	
+	if (lagus>30000 && handle->my_input_lag<60/10*2) handle->my_input_lag++;//I doubt lag above 200ms is playable.
 }
 
 static void netplay_run_frame(netplay* handle)
 {
-//if (handle->speculative_frames!=retro_get_memory_size(0x5A4D5A)) printf("%i!=%i\n",handle->speculative_frames,retro_get_memory_size(0x5A4D5A)),exit(13);
-#ifndef DEBUG
-#error no seriously.
-#endif
-//puts("RFRAME");
-	if (handle->speculative_frames%60==0)
+	if (handle->time_to_next_lag)
 	{
-printf("INOUT= IN=%i,%i OUT=%i,%i\n",handle->in_packets,handle->in_frames,handle->out_packets,handle->out_frames);
-if(!handle->in_packets) puts("INOUTDIFF=inf");
-else printf("INOUTDIFF=%f\n", ((float)(handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_packets)) / (handle->in_packets*handle->out_packets/**3/2*/));
-		if ((handle->in_frames*handle->out_packets)-(handle->out_frames*handle->in_packets) <- handle->in_packets*handle->out_packets*3/2)
-		//if (0)
-		{
-puts("LAGFRAME");
-			handle->out_packets=0;
-			handle->out_frames=0;
-			handle->in_packets=0;
-			handle->in_frames=0;
-			return;
-		}
-puts("NOTLAGFRAME");
-		
-		handle->out_packets=0;
-		handle->out_frames=0;
-		handle->in_packets=0;
-		handle->in_frames=0;
-	}
-	if (handle->speculative_frames%120==0)
-	{
-		uint64 oldfpscheck=handle->fpscheck;
-		
-#ifdef _WIN32
-		GetSystemTimeAsFileTime((FILETIME*)&handle->fpscheck);
-		printf("TIMER=%u\n",handle->fpscheck - oldfpscheck);
-		if (handle->fpscheck - oldfpscheck > 2100*10000)
-#else
-#error what
-#endif
-		{
-			handle->my_input_lag++;
-		}
+		handle->time_to_next_lag--;
+		if (handle->time_to_next_lag==5-1) return;
 	}
 	
 	uint16 myinput=0;
@@ -434,18 +458,18 @@ puts("NOTLAGFRAME");
 	
 	handle->speculative_frames++;
 	
-	if (handle->speculative_frames-handle->final_frames >= 64/6)
+	if (handle->speculative_frames-handle->final_frames >= 64)
 	{
 printf("%i-%i=%i,DIE\n",handle->speculative_frames,handle->final_frames,handle->speculative_frames-handle->final_frames);
 #ifndef DEBUG
-#error no seriously. also kill that division.
+#error no seriously.
 #endif
 exit(12);
 		netplay_abort(handle, abort_ping_timeout);
 		return;//normally we can just continue, but not when we're about to overflow a buffer.
 	}
 	struct pack_gameplay packet={
-		pack_gameplay_id, handle->signature, handle->final_frames, handle->send_from_frame, handle->speculative_frames
+		pack_gameplay_id, handle->signature, handle->final_frames, handle->send_from_frame, handle->speculative_frames, handle->lagtest
 	};
 	for (i=0;i<handle->speculative_frames-handle->send_from_frame;i++)
 	{
@@ -454,9 +478,6 @@ exit(12);
 	
 	packet.chat_len=0;
 	socket_write(&handle->sock, &packet, sizeof(packet));
-	
-	handle->out_packets++;
-	handle->out_frames+=(packet.this_frame - packet.start_frame);
 	
 	retro_run();
 }
@@ -552,7 +573,7 @@ void netplay_run(netplay* handle)
 				continue;
 			}
 			
-			memcpy(handle->setup->sram_ptr+packet->start, packet->data, packet->len);
+			memcpy(handle->setup->sram_ptr+(packet->start*1024), packet->data, packet->len);
 			handle->setup->sram_ack->ack[packet->start/8]|=1<<(packet->start&7);
 			
 			socket_write(&handle->sock, handle->setup->sram_ack, handle->setup->sram_ack_size_with_header);
@@ -578,6 +599,17 @@ void netplay_run(netplay* handle)
 			continue;
 		}
 		
+		if (pack_base->packtype==pack_gameplay_id && handle->state==state_c_getsram)
+		{
+			netplay_run_init(handle);
+			//fall through
+		}
+		if (pack_base->packtype==pack_gameplay_id && handle->state==state_playing)
+		{
+			struct pack_gameplay * packet=(void*)raw_packet;
+			netplay_run_packet(handle, packet);
+		}
+		
 		if (pack_base->packtype==pack_abort_id)
 		{
 			struct pack_abort * packet=(void*)raw_packet;
@@ -589,34 +621,6 @@ void netplay_run(netplay* handle)
 			struct pack_abort packet = { pack_abort_id, handle->signature,
 																		handle->myplayerid };
 			socket_write(&handle->sock, &packet, sizeof(packet));
-		}
-		
-		if (pack_base->packtype==pack_setup_data_id && handle->state==state_c_getsram)
-		{
-			struct pack_setup_data * packet=(void*)raw_packet;
-			
-			if (packet->len>1024 || packet->start*1024+1024 > handle->setup->sram_size)
-			{
-				netplay_abort(handle, abort_not_host);
-				continue;
-			}
-			
-			memcpy(handle->setup->sram_ptr+packet->start, packet->data, packet->len);
-			handle->setup->sram_ack->ack[packet->start/8]|=1<<(packet->start&7);
-			
-			socket_write(&handle->sock, handle->setup->sram_ack, handle->setup->sram_ack_size_with_header);
-			continue;
-		}
-		
-		if (pack_base->packtype==pack_gameplay_id && handle->state==state_c_getsram)
-		{
-			netplay_run_init(handle);
-			//fall through
-		}
-		if (pack_base->packtype==pack_gameplay_id && handle->state==state_playing)
-		{
-			struct pack_gameplay * packet=(void*)raw_packet;
-			netplay_run_packet(handle, packet);
 		}
 	}
 	if (handle->state!=state_s_waitcon && handle->state!=state_aborted)
@@ -656,6 +660,7 @@ void netplay_run(netplay* handle)
 				packet.packtype=pack_setup_data_id;
 				packet.signature=handle->signature;
 				packet.start=byteat*8+bitat;
+printf("SRAMSEND=%i\n",packet.start);
 				packet.len=handle->setup->sram_size-(packet.start*1024);
 				if (packet.len>1024) packet.len=1024;
 				memcpy(packet.data, handle->setup->sram_ptr+(packet.start*1024), packet.len);
