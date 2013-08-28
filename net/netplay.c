@@ -1,3 +1,9 @@
+/*
+todo:
+increase sram send speed, render something to screen, share again
+eagerly abort on bad data on s.waitcon and c.sendsetup
+attach controller to port 2
+*/
 #include "netplay.h"
 #include <stdint.h>
 #include <string.h>
